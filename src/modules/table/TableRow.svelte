@@ -10,22 +10,23 @@
 
     const { rowHeight } = getContext('options');
     const { hoveredRow, selectedRow } = getContext('gantt');
+    const { api } = getContext('services');
 
     const dispatch = createEventDispatcher();
 
     let treeIndentationStyle = '';
     $: {
-        treeIndentationStyle = row.parent ? `padding-left: ${row.childLevel*3}em;`:'';
+        treeIndentationStyle = row.parent ? `padding-left: ${row.childLevel * 3}em;` : '';
     }
 
     onMount(()=>{
         if(row.model.expanded == false) dispatch('rowCollapsed', { row });
-    })
+    });
 
 </script>
 
 <div data-row-id={row.model.id} 
-    style="height:{$rowHeight}px" 
+    style="height:{row.height}px" 
     class="sg-table-row {row.model.classes || ''}" 
     class:sg-row-expanded="{row.expanded}" 
     class:sg-hover={$hoveredRow == row.model.id} 

@@ -11,6 +11,7 @@ import type { TableHeader } from './modules/table/tableHeader';
 import type { SvelteGanttDateAdapter } from './utils/date';
 import type { Writable } from 'svelte/store';
 import { SelectionManager } from './entities';
+import { TaskOverlapService } from './core/taskOverlap';
 
 interface Header { 
     unit:string; 
@@ -44,6 +45,7 @@ export interface GanttContextServices {
     dndManager: DragDropManager;
     selectionManager: SelectionManager;
     columnService: ColumnService;
+    taskOverlapService: TaskOverlapService;
 }
 
 export interface GanttContextOptions {

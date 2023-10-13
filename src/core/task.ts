@@ -1,9 +1,10 @@
 import type { SvelteRow } from './row';
 import type { ColumnService } from './column';
+import { TaskOverlapService } from './taskOverlap';
 
 export interface TaskModel {
-    id: number; // | string;
-    resourceId: number; // | string
+    id: number | string;
+    resourceId: number | string;
     from: any; // date
     to: any; // date
 
@@ -15,6 +16,9 @@ export interface TaskModel {
     buttonClasses?: string | string[];
     buttonHtml?: string;
     enableDragging?: boolean;
+    color?: string;
+    height?: number;
+    data?: any;
 }
 
 export interface SvelteTask {
@@ -33,13 +37,14 @@ export class TaskFactory {
     
     rowPadding: number;
     rowEntities: {[key:number]: SvelteRow}
+    taskOverlapService: TaskOverlapService;
 
-    constructor(columnService: ColumnService) {
-		this.columnService = columnService;
+    constructor(columnService: ColumnService, taskOverlapService: TaskOverlapService) {
+        this.columnService = columnService;
+        this.taskOverlapService = taskOverlapService;
     }
-    
+
     createTask(model: TaskModel): SvelteTask {
-        
         // id of task, every task needs to have a unique one
         //task.id = task.id || undefined;
         // completion %, indicated on task
@@ -85,11 +90,14 @@ export class TaskFactory {
     }
 
     getHeight(model){
-        return this.row(model.resourceId).height - 2 * this.rowPadding;
+        return model.height - 2 * this.rowPadding;
     }
 
-    getPosY(model){
-        return this.row(model.resourceId).y + this.rowPadding;
+    getPosY(model) {
+        const level  = this.taskOverlapService.getLevel(model);
+        const offsetHeight = this.getHeight(model) * level;
+        const totalPaddings = this.rowPadding * (level + 1);
+        return this.row(model.resourceId).y + offsetHeight + totalPaddings;
     }
 }
 

@@ -27,6 +27,7 @@
     import { onEvent, onDelegatedEvent, offDelegatedEvent } from './core/events';
     import { NoopSvelteGanttDateAdapter, getDuration, getAllPeriods } from './utils/date';
     import type { SvelteGanttDateAdapter } from './utils/date';
+    import { TaskOverlapService } from './core/taskOverlap';
 
     function assertSet(values) {
         for (const name in values) {
@@ -185,6 +186,24 @@
         disableTransition = !!disableTransition;
     }
 
+
+    export const taskOverlapService = new TaskOverlapService({
+        tasks,
+        rows,
+        rowHeight,
+    })
+
+    /** Run a function without CSS transition */
+    let noTransition = false;
+    export async function withoutTransition(fn: () => void | Promise<void>) {
+        noTransition = true;
+        await tick();
+        await fn();
+        noTransition = false;
+    }
+
+   
+
     let columns;
     $: {
         columns = getColumnsV2($_from, $_to, columnUnit, columnOffset, $_width);
@@ -262,8 +281,10 @@
         api.registerEvent('tasks', 'moveEnd');
         api.registerEvent('tasks', 'change');
         api.registerEvent('tasks', 'changed');
+        api.registerEvent('tasks', 'resize');
         api.registerEvent('gantt', 'viewChanged');
         api.registerEvent('gantt', 'dateSelected');
+        api.registerEvent('gantt', 'scroll');
         api.registerEvent('tasks', 'dblclicked');
         api.registerEvent('timeranges', 'clicked');
         api.registerEvent('timeranges', 'resized');
@@ -313,7 +334,15 @@
     let __scrollLeft = 0;
     function scrollable(node) {
         const onscroll = event => {
-            const { scrollTop, scrollLeft } = node;
+            const { scrollTop, scrollLeft, scrollWidth } = node;
+
+            api.gantt.raise.scroll({
+                scrollTop,
+                scrollLeft,
+                scrollWidth,
+                visibleWidth: $visibleWidth,
+                columns: getColumnsV2($_from, $_to, columnUnit, columnOffset, $_width)
+            });
 
             scrollables.forEach(scrollable => {
                 if (scrollable.orientation === 'horizontal') {
@@ -410,6 +439,7 @@
         const tasks = [];
         const opts = { rowPadding: $_rowPadding };
         taskData.forEach(t => {
+            t.height = $_rowHeight;
             const task = taskFactory.createTask(t);
             const row = $rowStore.entities[task.model.resourceId];
             task.reflections = [];
@@ -449,13 +479,13 @@
     export const api = new GanttApi();
     const selectionManager = new SelectionManager();
 
-    export const taskFactory = new TaskFactory(columnService);
+    export const taskFactory = new TaskFactory(columnService, taskOverlapService);
     $: {
         taskFactory.rowPadding = $_rowPadding;
         taskFactory.rowEntities = $rowStore.entities;
     }
 
-    export const rowFactory = new RowFactory();
+    export const rowFactory = new RowFactory(taskOverlapService);
     $: rowFactory.rowHeight = rowHeight;
 
     export const dndManager = new DragDropManager(rowStore);
@@ -478,7 +508,8 @@
         api,
         dndManager,
         selectionManager,
-        columnService
+        columnService,
+        taskOverlapService 
     });
 
     export function refreshTimeRanges() {
@@ -577,6 +608,10 @@
         mainContainer.scrollTo(options);
     }
 
+    export function scrollTo(options) {
+        mainContainer.scrollTo(options);
+    }
+
     export function updateTask(model) {
         const task = taskFactory.createTask(model);
         taskStore.upsert(task);
@@ -616,19 +651,30 @@
     $: filteredRows = $allRows.filter(row => !row.hidden);
 
     let rowContainerHeight;
-    $: rowContainerHeight = filteredRows.length * rowHeight;
+    $: rowContainerHeight = filteredRows.reduce((acc, row) => acc + row.height, 0);
 
     let startIndex;
-    $: startIndex = Math.floor(__scrollTop / rowHeight);
+    $: startIndex = getStartIndex({
+        scrollTop: __scrollTop,
+        filteredRows
+    });
+    function getStartIndex({ scrollTop, filteredRows }) {
+        return filteredRows.findIndex(row => row.y > scrollTop) - 1;
+    }
 
     let endIndex;
-    $: endIndex = Math.min(startIndex + Math.ceil($visibleHeight / rowHeight), filteredRows.length - 1);
+    $: endIndex = getEndIndex({ filteredRows, visibleHeight: $visibleHeight });
+    function getEndIndex({ filteredRows, visibleHeight }) {
+        return filteredRows.length - 1;
+    }
 
     let paddingTop = 0;
-    $: paddingTop = startIndex * rowHeight;
+    $: paddingTop = getPaddingTop({ startIndex });
+    function getPaddingTop({ startIndex }) {
+        return filteredRows[startIndex] ? filteredRows[startIndex].y : 0;
+    }
 
     let paddingBottom = 0;
-    $: paddingBottom = (filteredRows.length - endIndex - 1) * rowHeight;
 
     let visibleRows = [];
     $: visibleRows = filteredRows.slice(startIndex, endIndex + 1);
@@ -652,9 +698,9 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-<div class="sg-gantt {classes}" class:sg-disable-transition={!disableTransition} bind:this={ganttElement} on:mousedown|stopPropagation={onEvent} on:click|stopPropagation={onEvent} on:mouseover={onEvent} on:mouseleave={onEvent}>
+<div class="sg-gantt {classes}" class:sg-disable-transition={noTransition} bind:this={ganttElement} on:mousedown|stopPropagation={onEvent} on:click|stopPropagation={onEvent} on:mouseover={onEvent} on:mouseleave={onEvent}>
     {#each ganttTableModules as module}
-    <svelte:component this={module} {rowContainerHeight} {paddingTop} {paddingBottom} {tableWidth} {...$$restProps} on:init="{onModuleInit}" {visibleRows} />
+    <svelte:component this={module} {rowContainerHeight} {paddingTop} {paddingBottom} {tableWidth} {mounted} {...$$restProps} on:init="{onModuleInit}" {visibleRows} />
 
     <Resizer x={tableWidth} on:resize="{onResize}" container={ganttElement}></Resizer>
     {/each}

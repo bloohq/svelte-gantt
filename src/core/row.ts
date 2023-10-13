@@ -1,3 +1,5 @@
+import { TaskOverlapService } from './taskOverlap';
+
 export interface RowModel {
     id: number | string;
     label: string;
@@ -13,7 +15,8 @@ export interface RowModel {
     iconClass?: string;
     /** Url of image in row header */
     imageSrc?: string;
-    expanded?:boolean
+    expanded?:boolean;
+    data?: any;
 }
 
 export interface SvelteRow {
@@ -33,8 +36,10 @@ export interface SvelteRow {
 
 export class RowFactory {
     rowHeight: number;
+    taskOverlapService: TaskOverlapService;
 
-    constructor(){
+    constructor(taskOverlapService: TaskOverlapService) {
+        this.taskOverlapService = taskOverlapService;
     }
 
     createRow(row: RowModel, y: number): SvelteRow {
@@ -53,7 +58,7 @@ export class RowFactory {
         return {
             model: row,
             y,
-            height,
+            height: this.taskOverlapService.calculateRowHeight(row.id),
             expanded: true
         }
     }

@@ -1,12 +1,12 @@
 <script lang="ts">
-    import type { SvelteRow } from '../core/row';
+    import { GanttContext } from 'src/gantt';
     import { getContext } from 'svelte';
+    import type { SvelteRow } from '../core/row';
     export let row: SvelteRow;
-    const { rowHeight } = getContext('options');
-    const { hoveredRow, selectedRow } = getContext('gantt');
+    const { hoveredRow, selectedRow } = getContext<GanttContext>('gantt');
 </script>
 
-<div class="sg-row {row.model.classes}" data-row-id="{row.model.id}" class:sg-hover={$hoveredRow == row.model.id} class:sg-selected={$selectedRow == row.model.id} style="height:{$rowHeight}px">
+<div class="sg-row {row.model.classes}" data-row-id="{row.model.id}" class:sg-hover={$hoveredRow == row.model.id} class:sg-selected={$selectedRow == row.model.id} style="height:{row.height}px">
     {#if row.model.contentHtml}
         {@html row.model.contentHtml}
     {/if}

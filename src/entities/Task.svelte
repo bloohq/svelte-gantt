@@ -169,13 +169,13 @@
                     const width = newRight - newLeft;
                     const top = $rowPadding + targetRow.y;
                     
-                    updatePosition(left, top, width);
+                    // updatePosition(left, top, width);
     
                     const newTask = {
                         ...task,
                         left: left,
                         width: width,
-                        top: top,
+                        // top: top,
                         model
                     }
     
@@ -258,6 +258,7 @@
                     onMouseUp:onmouseup,
                     onResize: (event) => {
                         (_position.x = event.x), (_position.width = event.width), (_resizing = true);
+                        api.tasks.raise.resize(model);
                     },
                     // onDrag: (event) => {
                     //     (_position.x = event.x), (_position.y = event.y), (_dragging = true);
@@ -286,7 +287,7 @@
         function taskElement(node, model) {
             if(node && node.getBoundingClientRect().x == 0 && node.getBoundingClientRect().width == 0){
                 node = <HTMLElement> document.querySelector('[data-task-id="'+node.dataset.taskId+'"]')
-                console.log('NODE AFTER', node, node.getBoundingClientRect())
+                console.log('NODE AFTER', node, node?.getBoundingClientRect())
             }
             if(taskElementHook) {
                 return taskElementHook(node, model);
@@ -416,7 +417,7 @@
       use:drag
       use:taskElement={model}
       class="sg-task {model.classes}"
-      style="width:{_position.width}px; height:{height}px; transform: translate({_position.x}px, {_position.y}px);" 
+      style="width:{_position.width}px; height:{height}px; transform: translate({_position.x}px, {_position.y}px); background-color:{model.color};" 
       class:moving={_dragging || _resizing}
       class:animating
       class:sg-task-reflected={reflected}

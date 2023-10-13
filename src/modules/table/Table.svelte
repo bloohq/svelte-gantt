@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-    import { createEventDispatcher, onMount, getContext } from 'svelte';
+    import { createEventDispatcher, onMount, getContext, tick } from 'svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -11,6 +11,7 @@
     import { rowStore, taskStore } from "../../core/store";
     import type { TableHeader } from './tableHeader';
     import type { SvelteRow } from '../../core/row';
+    import type { GanttContext, GanttContextDimensions, GanttContextServices, SvelteGanttOptions } from 'src/gantt';
 
     export let tableWidth;
     export let paddingTop;
@@ -23,14 +24,28 @@
     // width: width of column
     export let tableHeaders: TableHeader[] = [{ title: 'Name', property: 'label', width: 100 }];
 
-    const { from, to, width, visibleWidth, headerHeight } = getContext('dimensions');
+    const { from, to, width, visibleWidth, headerHeight } = getContext<GanttContextDimensions>('dimensions');
     const { rowPadding, rowHeight } = getContext('options');
+    const { api, taskOverlapService } = getContext('services');
+
+    export let mounted = false;
 
     onMount(() => {
         dispatch('init', { module: this });
     });
 
-    const { scrollables } = getContext('gantt');
+    $:{
+        if(mounted){
+            api.tasks.on.moveEnd(() => {  
+                updateYPositions(); 
+            });
+        }
+        
+    }
+
+
+
+    const { scrollables } = getContext<GanttContext>('gantt');
     let headerContainer;
     function scrollListener(node) {
         scrollables.push({ node, orientation: "vertical" });
@@ -71,20 +86,30 @@
         updateYPositions();
     }
 
-    function updateYPositions() {
+
+    // TODO: move to service
+    function getTaskPosY(model){
+        const level  = taskOverlapService.getLevel(model);
+        const offsetHeight = (model.height - 2 * $rowPadding) * level;
+        const totalPaddings = $rowPadding * (level + 1);
+        return $rowStore.entities[model.resourceId].y + offsetHeight + totalPaddings;
+    }
+
+    async function updateYPositions() {
         let y = 0;
+        await tick();
         $rowStore.ids.forEach(id => {
             const row = $rowStore.entities[id];
             if(!row.hidden) {
                 $rowStore.entities[id].y = y;
-                y+= $rowHeight;
+                $rowStore.entities[id].height = taskOverlapService.calculateRowHeight(id);
+                y+= $rowStore.entities[id].height;
             }
         });
 
         $taskStore.ids.forEach(id => {
             const task = $taskStore.entities[id];
-            const row = $rowStore.entities[task.model.resourceId];
-            $taskStore.entities[id].top = row.y + $rowPadding;
+                $taskStore.entities[id].top = getTaskPosY(task.model);
         });
     }
 

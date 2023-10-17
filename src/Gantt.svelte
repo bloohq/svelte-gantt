@@ -293,7 +293,7 @@
     });
 
     onDelegatedEvent('mousedown', 'data-task-id', (event, data, target) => {
-        const taskId = +data;
+        const taskId = Number.isNaN(+data) ? data : +data;
         if(isLeftClick(event) && !target.classList.contains("sg-task-reflected")){
             if (event.ctrlKey) {
                 selectionManager.toggleSelection(taskId, target);

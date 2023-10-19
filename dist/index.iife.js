@@ -1093,7 +1093,6 @@
             this.offsetPos = { x: null, y: null };
             this.offsetWidth = null;
             this.onmousedown = (event) => {
-                console.log(this.settings);
                 const offsetEvent = { clientX: this.offsetPos.x + event.clientX, clientY: this.offsetPos.y + event.clientY };
                 if (!isLeftClick(event) && !this.settings.modelId) {
                     return;
@@ -1361,7 +1360,7 @@
     	};
     }
 
-    // (389:8) {:else}
+    // (385:8) {:else}
     function create_else_block$2(ctx) {
     	let t_value = /*model*/ ctx[0].label + "";
     	let t;
@@ -1382,7 +1381,7 @@
     	};
     }
 
-    // (387:30) 
+    // (383:30) 
     function create_if_block_3$1(ctx) {
     	let html_tag;
     	let raw_value = /*taskContent*/ ctx[8](/*model*/ ctx[0]) + "";
@@ -1408,7 +1407,7 @@
     	};
     }
 
-    // (385:8) {#if model.html}
+    // (381:8) {#if model.html}
     function create_if_block_2$1(ctx) {
     	let html_tag;
     	let raw_value = /*model*/ ctx[0].html + "";
@@ -1434,7 +1433,7 @@
     	};
     }
 
-    // (391:8) {#if model.showButton}
+    // (387:8) {#if model.showButton}
     function create_if_block_1$2(ctx) {
     	let span;
     	let raw_value = /*model*/ ctx[0].buttonHtml + "";
@@ -1470,7 +1469,7 @@
     	};
     }
 
-    // (399:6) {#if model.labelBottom}
+    // (395:6) {#if model.labelBottom}
     function create_if_block$5(ctx) {
     	let label;
     	let t_value = /*model*/ ctx[0].labelBottom + "";
@@ -1706,7 +1705,6 @@
 
     			if (oldReflections.length) taskStore.deleteAll(oldReflections);
     			if (newTasksAndReflections.length) taskStore.upsertAll(newTasksAndReflections);
-    			console.log('%cTASK SVELTE UPDATE', 'background:black; color:white;');
     			newTasksAndReflections.length = 0;
     			oldReflections.length = 0;
     		};
@@ -1825,9 +1823,16 @@
     				const targetRow = $rowStore.entities[model.resourceId];
     				const left = newLeft;
     				const width = newRight - newLeft;
-    				const top = $rowPadding + targetRow.y;
-    				updatePosition(left, top, width);
-    				const newTask = Object.assign(Object.assign({}, task), { left, width, top, model });
+    				$rowPadding + targetRow.y;
+
+    				// updatePosition(left, top, width);
+    				const newTask = Object.assign(Object.assign({}, task), {
+    					left,
+    					width,
+    					// top: top,
+    					model
+    				});
+
     				const changed = prevFrom != newFrom || prevTo != newTo || sourceRow && sourceRow.model.id !== targetRow.model.id;
 
     				if (changed) {
@@ -1896,8 +1901,6 @@
     			// reflected tasks must not be resized or dragged
     			tasksSettings.set(model.id, {
     				onDown: event => {
-    					console.log('EVENT ON DOWN DRAGGABLE TASK', event);
-
     					if (event.dragging) {
     						setCursor("move");
     					}
@@ -1925,7 +1928,7 @@
     					return get_store_value(rowStore).entities[model.resourceId].model.enableDragging && model.enableDragging;
     				},
     				onDrop: ondrop,
-    				container: rowContainer || document.body,
+    				container: rowContainer,
     				resizeHandleWidth,
     				getX: () => _position.x,
     				getY: () => _position.y,
@@ -1942,10 +1945,6 @@
     	function taskElement(node, model) {
     		if (node && node.getBoundingClientRect().x == 0 && node.getBoundingClientRect().width == 0) {
     			node = document.querySelector('[data-task-id="' + node.dataset.taskId + '"]');
-
-    			console.log('NODE AFTER', node, node === null || node === void 0
-    			? void 0
-    			: node.getBoundingClientRect());
     		}
 
     		if (taskElementHook) {
@@ -2061,7 +2060,7 @@
     			if (if_block) if_block.c();
     			attr(div, "class", div_class_value = "sg-row " + /*row*/ ctx[0].model.classes + " svelte-7u5y5s");
     			attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[0].model.id);
-    			set_style(div, "height", (/*row*/ ctx[0].height ?? /*$rowHeight*/ ctx[3]) + "px");
+    			set_style(div, "height", /*row*/ ctx[0].height + "px");
     			toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[1] == /*row*/ ctx[0].model.id);
     			toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[2] == /*row*/ ctx[0].model.id);
     		},
@@ -2091,8 +2090,8 @@
     				attr(div, "data-row-id", div_data_row_id_value);
     			}
 
-    			if (dirty & /*row, $rowHeight*/ 9) {
-    				set_style(div, "height", (/*row*/ ctx[0].height ?? /*$rowHeight*/ ctx[3]) + "px");
+    			if (dirty & /*row*/ 1) {
+    				set_style(div, "height", /*row*/ ctx[0].height + "px");
     			}
 
     			if (dirty & /*row, $hoveredRow, row*/ 3) {
@@ -2115,10 +2114,7 @@
     function instance$c($$self, $$props, $$invalidate) {
     	let $hoveredRow;
     	let $selectedRow;
-    	let $rowHeight;
     	let { row } = $$props;
-    	const { rowHeight } = getContext('options');
-    	component_subscribe($$self, rowHeight, value => $$invalidate(3, $rowHeight = value));
     	const { hoveredRow, selectedRow } = getContext('gantt');
     	component_subscribe($$self, hoveredRow, value => $$invalidate(1, $hoveredRow = value));
     	component_subscribe($$self, selectedRow, value => $$invalidate(2, $selectedRow = value));
@@ -2127,7 +2123,7 @@
     		if ('row' in $$props) $$invalidate(0, row = $$props.row);
     	};
 
-    	return [row, $hoveredRow, $selectedRow, $rowHeight, rowHeight, hoveredRow, selectedRow];
+    	return [row, $hoveredRow, $selectedRow, hoveredRow, selectedRow];
     }
 
     class Row extends SvelteComponent {
@@ -3648,7 +3644,7 @@
     	return child_ctx;
     }
 
-    // (596:4) {#each ganttTableModules as module}
+    // (595:4) {#each ganttTableModules as module}
     function create_each_block_5(ctx) {
     	let switch_instance;
     	let t;
@@ -3769,7 +3765,7 @@
     	};
     }
 
-    // (607:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+    // (606:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
     function create_each_block_4(key_1, ctx) {
     	let first;
     	let timerangeheader;
@@ -3821,7 +3817,7 @@
     	};
     }
 
-    // (621:24) {#each visibleRows as row (row.model.id)}
+    // (620:24) {#each visibleRows as row (row.model.id)}
     function create_each_block_3(key_1, ctx) {
     	let first;
     	let row;
@@ -3863,7 +3859,7 @@
     	};
     }
 
-    // (628:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+    // (627:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
     function create_each_block_2(key_1, ctx) {
     	let first;
     	let timerange;
@@ -3915,7 +3911,7 @@
     	};
     }
 
-    // (632:20) {#each visibleTasks as task (task.model.id)}
+    // (631:20) {#each visibleTasks as task (task.model.id)}
     function create_each_block_1$1(key_1, ctx) {
     	let first;
     	let task;
@@ -3983,7 +3979,7 @@
     	};
     }
 
-    // (637:16) {#each ganttBodyModules as module}
+    // (636:16) {#each ganttBodyModules as module}
     function create_each_block$3(ctx) {
     	let switch_instance;
     	let switch_instance_anchor;
@@ -4979,7 +4975,6 @@
     					const before = node.scrollLeft + mousepos.x;
     					const after = before * scale;
     					const scrollLeft = after - mousepos.x + node.clientWidth / 2;
-    					console.log('scrollLeft', scrollLeft);
     					$$invalidate(0, columnUnit = options.columnUnit);
     					$$invalidate(43, columnOffset = options.columnOffset);
     					set_store_value(_minWidth, $_minWidth = options.minWidth, $_minWidth);
@@ -5900,7 +5895,7 @@
 
     function get_each_context$2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[13] = list[i];
+    	child_ctx[12] = list[i];
     	return child_ctx;
     }
 
@@ -5912,8 +5907,8 @@
 
     	function select_block_type_2(ctx, dirty) {
     		if (/*row*/ ctx[1].model.headerHtml) return create_if_block_4;
-    		if (/*header*/ ctx[13].renderer) return create_if_block_5;
-    		if (/*header*/ ctx[13].type === 'resourceInfo') return create_if_block_6;
+    		if (/*header*/ ctx[12].renderer) return create_if_block_5;
+    		if (/*header*/ ctx[12].type === 'resourceInfo') return create_if_block_6;
     		return create_else_block_2;
     	}
 
@@ -5983,8 +5978,8 @@
     			}
     		});
 
-    	tabletreecell.$on("rowCollapsed", /*rowCollapsed_handler*/ ctx[8]);
-    	tabletreecell.$on("rowExpanded", /*rowExpanded_handler*/ ctx[9]);
+    	tabletreecell.$on("rowCollapsed", /*rowCollapsed_handler*/ ctx[6]);
+    	tabletreecell.$on("rowExpanded", /*rowExpanded_handler*/ ctx[7]);
 
     	return {
     		c() {
@@ -5998,7 +5993,7 @@
     			const tabletreecell_changes = {};
     			if (dirty & /*row*/ 2) tabletreecell_changes.row = /*row*/ ctx[1];
 
-    			if (dirty & /*$$scope, row, headers*/ 65539) {
+    			if (dirty & /*$$scope, row, headers*/ 32771) {
     				tabletreecell_changes.$$scope = { dirty, ctx };
     			}
 
@@ -6049,7 +6044,7 @@
 
     // (59:16) {:else}
     function create_else_block_2(ctx) {
-    	let t_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "";
+    	let t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
     	let t;
 
     	return {
@@ -6060,7 +6055,7 @@
     			insert(target, t, anchor);
     		},
     		p(ctx, dirty) {
-    			if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "")) set_data(t, t_value);
+    			if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t, t_value);
     		},
     		d(detaching) {
     			if (detaching) detach(t);
@@ -6074,7 +6069,7 @@
     	let img_src_value;
     	let t0;
     	let div;
-    	let t1_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "";
+    	let t1_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
     	let t1;
 
     	return {
@@ -6099,7 +6094,7 @@
     				attr(img, "src", img_src_value);
     			}
 
-    			if (dirty & /*row, headers*/ 3 && t1_value !== (t1_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "")) set_data(t1, t1_value);
+    			if (dirty & /*row, headers*/ 3 && t1_value !== (t1_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t1, t1_value);
     		},
     		d(detaching) {
     			if (detaching) detach(img);
@@ -6112,7 +6107,7 @@
     // (52:42) 
     function create_if_block_5(ctx) {
     	let html_tag;
-    	let raw_value = /*header*/ ctx[13].renderer(/*row*/ ctx[1]) + "";
+    	let raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "";
     	let html_anchor;
 
     	return {
@@ -6126,7 +6121,7 @@
     			insert(target, html_anchor, anchor);
     		},
     		p(ctx, dirty) {
-    			if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[13].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
+    			if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
     		},
     		d(detaching) {
     			if (detaching) detach(html_anchor);
@@ -6191,7 +6186,7 @@
 
     // (39:20) {:else}
     function create_else_block(ctx) {
-    	let t_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "";
+    	let t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
     	let t;
 
     	return {
@@ -6202,7 +6197,7 @@
     			insert(target, t, anchor);
     		},
     		p(ctx, dirty) {
-    			if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[13].property] + "")) set_data(t, t_value);
+    			if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t, t_value);
     		},
     		d(detaching) {
     			if (detaching) detach(t);
@@ -6213,7 +6208,7 @@
     // (37:46) 
     function create_if_block_2(ctx) {
     	let html_tag;
-    	let raw_value = /*header*/ ctx[13].renderer(/*row*/ ctx[1]) + "";
+    	let raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "";
     	let html_anchor;
 
     	return {
@@ -6227,7 +6222,7 @@
     			insert(target, html_anchor, anchor);
     		},
     		p(ctx, dirty) {
-    			if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[13].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
+    			if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
     		},
     		d(detaching) {
     			if (detaching) detach(html_anchor);
@@ -6270,7 +6265,7 @@
 
     	function select_block_type_1(ctx, dirty) {
     		if (/*row*/ ctx[1].model.headerHtml) return create_if_block_1;
-    		if (/*header*/ ctx[13].renderer) return create_if_block_2;
+    		if (/*header*/ ctx[12].renderer) return create_if_block_2;
     		return create_else_block;
     	}
 
@@ -6336,7 +6331,7 @@
     	const if_blocks = [];
 
     	function select_block_type(ctx, dirty) {
-    		if (/*header*/ ctx[13].type == 'tree') return 0;
+    		if (/*header*/ ctx[12].type == 'tree') return 0;
     		return 1;
     	}
 
@@ -6349,7 +6344,7 @@
     			if_block.c();
     			t = space();
     			attr(div, "class", "sg-table-body-cell sg-table-cell svelte-ffcwbe");
-    			set_style(div, "width", /*header*/ ctx[13].width + "px");
+    			set_style(div, "width", /*header*/ ctx[12].width + "px");
     		},
     		m(target, anchor) {
     			insert(target, div, anchor);
@@ -6385,7 +6380,7 @@
     			}
 
     			if (!current || dirty & /*headers*/ 1) {
-    				set_style(div, "width", /*header*/ ctx[13].width + "px");
+    				set_style(div, "width", /*header*/ ctx[12].width + "px");
     			}
     		},
     		i(local) {
@@ -6429,11 +6424,11 @@
     			}
 
     			attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[1].model.id);
-    			set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
+    			set_style(div, "height", /*row*/ ctx[1].height + "px");
     			attr(div, "class", div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-ffcwbe");
     			toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].expanded);
-    			toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[3] == /*row*/ ctx[1].model.id);
-    			toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
+    			toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[2] == /*row*/ ctx[1].model.id);
+    			toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[3] == /*row*/ ctx[1].model.id);
     		},
     		m(target, anchor) {
     			insert(target, div, anchor);
@@ -6476,8 +6471,8 @@
     				attr(div, "data-row-id", div_data_row_id_value);
     			}
 
-    			if (!current || dirty & /*row, $rowHeight*/ 6) {
-    				set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
+    			if (!current || dirty & /*row*/ 2) {
+    				set_style(div, "height", /*row*/ ctx[1].height + "px");
     			}
 
     			if (!current || dirty & /*row*/ 2 && div_class_value !== (div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-ffcwbe")) {
@@ -6488,12 +6483,12 @@
     				toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].expanded);
     			}
 
-    			if (!current || dirty & /*row, $hoveredRow, row*/ 10) {
-    				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[3] == /*row*/ ctx[1].model.id);
+    			if (!current || dirty & /*row, $hoveredRow, row*/ 6) {
+    				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[2] == /*row*/ ctx[1].model.id);
     			}
 
-    			if (!current || dirty & /*row, $selectedRow, row*/ 18) {
-    				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
+    			if (!current || dirty & /*row, $selectedRow, row*/ 10) {
+    				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[3] == /*row*/ ctx[1].model.id);
     			}
     		},
     		i(local) {
@@ -6522,16 +6517,14 @@
     }
 
     function instance$3($$self, $$props, $$invalidate) {
-    	let $rowHeight;
     	let $hoveredRow;
     	let $selectedRow;
     	let { headers = null } = $$props;
     	let { row = null } = $$props;
-    	const { rowHeight } = getContext('options');
-    	component_subscribe($$self, rowHeight, value => $$invalidate(2, $rowHeight = value));
+    	getContext('options');
     	const { hoveredRow, selectedRow } = getContext('gantt');
-    	component_subscribe($$self, hoveredRow, value => $$invalidate(3, $hoveredRow = value));
-    	component_subscribe($$self, selectedRow, value => $$invalidate(4, $selectedRow = value));
+    	component_subscribe($$self, hoveredRow, value => $$invalidate(2, $hoveredRow = value));
+    	component_subscribe($$self, selectedRow, value => $$invalidate(3, $selectedRow = value));
     	getContext('services');
     	const dispatch = createEventDispatcher();
 
@@ -6565,10 +6558,8 @@
     	return [
     		headers,
     		row,
-    		$rowHeight,
     		$hoveredRow,
     		$selectedRow,
-    		rowHeight,
     		hoveredRow,
     		selectedRow,
     		rowCollapsed_handler,

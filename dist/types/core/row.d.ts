@@ -15,6 +15,7 @@ export interface RowModel {
     /** Url of image in row header */
     imageSrc?: string;
     expanded?: boolean;
+    data?: any;
 }
 export interface SvelteRow {
     model: RowModel;

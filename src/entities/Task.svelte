@@ -92,7 +92,6 @@
     
             if (oldReflections.length) taskStore.deleteAll(oldReflections);
             if (newTasksAndReflections.length) taskStore.upsertAll(newTasksAndReflections);
-            console.log('%cTASK SVELTE UPDATE', 'background:black; color:white;')
     
             newTasksAndReflections.length = 0;
             oldReflections.length = 0;
@@ -244,7 +243,6 @@
             if (!reflected) { // reflected tasks must not be resized or dragged
                 tasksSettings.set(model.id, {
                     onDown: (event) => {
-                        console.log('EVENT ON DOWN DRAGGABLE TASK', event);
                         if (event.dragging) {
                             setCursor("move");
                         }
@@ -287,7 +285,6 @@
         function taskElement(node, model) {
             if(node && node.getBoundingClientRect().x == 0 && node.getBoundingClientRect().width == 0){
                 node = <HTMLElement> document.querySelector('[data-task-id="'+node.dataset.taskId+'"]')
-                console.log('NODE AFTER', node, node?.getBoundingClientRect())
             }
             if(taskElementHook) {
                 return taskElementHook(node, model);

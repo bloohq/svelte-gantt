@@ -400,7 +400,6 @@
                 const after = before * scale;
                 const scrollLeft = after - mousepos.x + node.clientWidth / 2;
 
-                console.log('scrollLeft', scrollLeft);
 
                 columnUnit = options.columnUnit;
                 columnOffset = options.columnOffset;

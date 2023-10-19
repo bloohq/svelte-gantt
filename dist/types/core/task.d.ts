@@ -16,6 +16,7 @@ export interface TaskModel {
     enableDragging?: boolean;
     color?: string;
     height?: number;
+    data?: any;
 }
 export interface SvelteTask {
     model: TaskModel;
@@ -57,6 +58,7 @@ export declare function reflectTask(task: SvelteTask, row: SvelteRow, options: {
         buttonHtml?: string;
         color?: string;
         height?: number;
+        data?: any;
     };
     top: number;
     reflected: boolean;

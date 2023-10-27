@@ -151,7 +151,7 @@ export interface SvelteGanttOptions {
      */
     tableHeaders?: TableHeader[];
     /** Disable dragging of tasks */
-    disableDragging: boolean;
+    disableDragging?: boolean;
 }
 export interface SvelteGanttComponent extends Component<SvelteGanttOptions> {
     api: GanttApi;

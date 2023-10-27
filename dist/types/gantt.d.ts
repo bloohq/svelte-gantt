@@ -150,6 +150,8 @@ export interface SvelteGanttOptions {
      * Headers of table, used with SvelteGanttTable module
      */
     tableHeaders?: TableHeader[];
+    /** Disable dragging of tasks */
+    disableDragging: boolean;
 }
 export interface SvelteGanttComponent extends Component<SvelteGanttOptions> {
     api: GanttApi;

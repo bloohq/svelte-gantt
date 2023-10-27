@@ -3,6 +3,7 @@ export class GanttApi {
     listenersMap: { [key: string]: any };
     tasks?: any;
     timeranges?: any;
+    gantt?: any;
 
     constructor() {
         this.listeners = [];

@@ -145,6 +145,9 @@
     /** Controls how the tasks will render */
     export let layout: 'overlap' | 'pack' = 'overlap';
 
+    /** Disable dragging of tasks */
+    export let disableDragging = false;
+
     const visibleWidth = writable<number>(null);
     const visibleHeight = writable<number>(null);
     const headerHeight = writable<number>(null);
@@ -211,6 +214,18 @@
         await tick();
         ganttElement.offsetHeight; // force a reflow
         disableTransition = false;
+    }
+
+    /** Run a function without CSS transition */
+    export async function withoutCSSTransition(fn: () => void | Promise<void>) {
+        disableTransition = true;
+        await tick();
+        await fn();
+        disableTransition = false;
+    }
+
+    export function scrollTo(options) {
+        mainContainer.scrollTo(options);
     }
 
     let columns: IColumn[];
@@ -304,6 +319,7 @@
         api.registerEvent('tasks', 'changed');
         api.registerEvent('gantt', 'viewChanged');
         api.registerEvent('gantt', 'dateSelected');
+        api.registerEvent('gantt', 'scroll');
         api.registerEvent('tasks', 'dblclicked');
         api.registerEvent('timeranges', 'clicked');
         api.registerEvent('timeranges', 'resized');
@@ -361,7 +377,15 @@
     let __scrollLeft = 0;
     function scrollable(node) {
         const onscroll = event => {
-            const { scrollTop, scrollLeft } = node;
+            const { scrollTop, scrollLeft, scrollWidth } = node;
+
+            api.gantt.raise.scroll({
+                scrollTop,
+                scrollLeft,
+                scrollWidth,
+                visibleWidth: $visibleWidth,
+                columns: getColumnsV2($_from, $_to, columnUnit, columnOffset, $_width)
+            });
 
             scrollables.forEach(scrollable => {
                 if (scrollable.orientation === 'horizontal') {
@@ -657,7 +681,7 @@
 
     let filteredRows = [];
     $: filteredRows = $allRows.filter(row => !row.hidden);
-    
+
     let rightScrollbarVisible: boolean;
     $: rightScrollbarVisible = rowContainerHeight > $visibleHeight;
 
@@ -715,7 +739,7 @@
                 const taskIds = $rowTaskCache[rowId];
                 if (taskIds) {
                     const tasks = taskIds.map(taskId => $taskStore.entities[taskId]);
-                    packLayout.layout(tasks, { 
+                    packLayout.layout(tasks, {
                         rowContentHeight: rowHeight - rowPadding * 2
                     });
                 }
@@ -752,7 +776,12 @@
     {/each}
 
     <div class="sg-timeline sg-view">
-        <div class="sg-header" bind:this={mainHeaderContainer} bind:clientHeight={$headerHeight} class:right-scrollbar-visible="{rightScrollbarVisible}">
+        <div
+            class="sg-header"
+            bind:this={mainHeaderContainer}
+            bind:clientHeight={$headerHeight}
+            class:right-scrollbar-visible={rightScrollbarVisible}
+        >
             <div class="sg-header-scroller" use:horizontalScrollListener>
                 <div class="header-container" style="width:{$_width}px">
                     <ColumnHeader
@@ -804,6 +833,7 @@
                             width={task.width}
                             height={task.height}
                             top={task.top}
+                            {disableDragging}
                             {...task}
                         />
                     {/each}
@@ -837,10 +867,10 @@
     }
 
     /* This class should take into account varying widths of the scroll bar */
-    :global(.right-scrollbar-visible) { 
+    :global(.right-scrollbar-visible) {
         /* set this value to your scrollbar width */
         padding-right: 17px;
-    } 
+    }
 
     .sg-timeline {
         flex: 1 1 0%;

@@ -12,6 +12,7 @@
     export let topDelta: number = 0;
     export let width: number;
     export let reflected = false;
+    export let disableDragging = false;
 
     let animating = true;
     let _dragging = false;
@@ -222,7 +223,8 @@
                 dragAllowed: () => {
                     return (
                         $rowStore.entities[model.resourceId].model.enableDragging &&
-                        model.enableDragging
+                        model.enableDragging &&
+                        !disableDragging
                     );
                 },
                 resizeAllowed: () => {
@@ -266,7 +268,10 @@
 
     let resizeEnabled: boolean;
     $: {
-        resizeEnabled = model.type !== 'milestone' && $rowStore.entities[model.resourceId].model.enableDragging && model.enableDragging;
+        resizeEnabled =
+            model.type !== 'milestone' &&
+            $rowStore.entities[model.resourceId].model.enableDragging &&
+            model.enableDragging;
     }
 </script>
 
@@ -276,7 +281,7 @@
     use:taskElement={model}
     class="sg-task {classes}"
     class:sg-milestone={model.type === 'milestone'}
-    style="width:{_position.width}px; height:{height}px; left: {_position.x}px; top: {_position.y}px;"
+    style="{model.style} width:{_position.width}px; height:{height}px; left: {_position.x}px; top: {_position.y}px;"
     class:moving={_dragging || _resizing}
     class:animating
     class:sg-task-reflected={reflected}
@@ -301,7 +306,12 @@
         <!-- <span class="debug">x:{_position.x} y:{_position.y}, x:{left} y:{top}</span> -->
         {#if model.showButton}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <span class="sg-task-button {model.buttonClasses}" on:click={onClick} role="button" tabindex="0">
+            <span
+                class="sg-task-button {model.buttonClasses}"
+                on:click={onClick}
+                role="button"
+                tabindex="0"
+            >
                 {@html model.buttonHtml}
             </span>
         {/if}
@@ -334,7 +344,7 @@
 
         white-space: nowrap;
         /* overflow: hidden; */
-        
+
         transition:
             background-color 0.2s,
             opacity 0.2s;
@@ -362,19 +372,21 @@
 
     .sg-task:not(.moving) {
         transition:
-            left 0.2s, top 0.2s,
+            left 0.2s,
+            top 0.2s,
             transform 0.2s,
             background-color 0.2s,
-            width 0.2s, 
+            width 0.2s,
             height 0.2s;
     }
 
     .sg-task--sticky:not(.moving) {
         transition:
-            left 0.2s, top 0.2s,
+            left 0.2s,
+            top 0.2s,
             transform 0.2s,
             background-color 0.2s,
-            width 0.2s, 
+            width 0.2s,
             height 0.2s;
     }
 

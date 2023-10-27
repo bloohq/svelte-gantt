@@ -22,9 +22,9 @@
 
     $: {
         fromTask = $taskStore.entities[fromId];
-        isFromRowHidden = $rowStore.entities[fromTask.model.resourceId].hidden;
+        isFromRowHidden = $rowStore.entities[fromTask.model.resourceId]?.hidden;
         toTask = $taskStore.entities[toId];
-        isToRowHidden = $rowStore.entities[toTask.model.resourceId].hidden;
+        isToRowHidden = $rowStore.entities[toTask.model.resourceId]?.hidden;
 
         let startY = fromTask.top + fromTask.height / 2;
         let startX = fromTask.left + fromTask.width;

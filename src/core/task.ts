@@ -2,13 +2,14 @@ import type { SvelteRow } from './row';
 import type { ColumnService } from './column';
 
 export interface TaskModel {
-    id: number; // | string;
+    id: number | string;
     resourceId: number | string; // | string
     from: number; // date
     to: number; // date
 
     amountDone?: number;
     classes?: string | string[];
+    style?: string;
     label?: string;
     html?: string;
     showButton?: boolean;

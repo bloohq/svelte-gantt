@@ -85,7 +85,7 @@ to do.txt
 .rpt2_cache/
 
 # npm published files
-dist/
+# dist/ // commented out because we want to be able to install from git repo
 !docs/dist
 
 # svelte

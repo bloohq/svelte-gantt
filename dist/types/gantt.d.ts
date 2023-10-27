@@ -11,14 +11,12 @@ import type { TableHeader } from './modules/table/tableHeader';
 import type { SvelteGanttDateAdapter } from './utils/date';
 import type { Writable } from 'svelte/store';
 import { SelectionManager } from './core/selectionManager';
-
 interface Header {
     unit: string;
     format: string;
     offset?: number;
     sticky?: boolean;
 }
-
 export interface GanttContextDimensions {
     from: Writable<Date>;
     to: Writable<Date>;
@@ -28,16 +26,14 @@ export interface GanttContextDimensions {
     visibleHeight: Writable<number>;
     headerHeight: Writable<number>;
 }
-
 export interface GanttContext {
-    scrollables: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    scrollables: any[];
     hoveredRow: Writable<number>;
     selectedRow: Writable<number>;
     rowContainer: HTMLElement;
     mainContainer: HTMLElement;
     mainHeaderContainer: HTMLElement;
 }
-
 export interface GanttContextServices {
     utils: GanttUtils;
     api: GanttApi;
@@ -45,7 +41,6 @@ export interface GanttContextServices {
     selectionManager: SelectionManager;
     columnService: ColumnService;
 }
-
 export interface GanttContextOptions {
     dateAdapter: SvelteGanttDateAdapter;
     taskElementHook?: TaskElementHook;
@@ -57,22 +52,18 @@ export interface GanttContextOptions {
     reflectOnChildRows: boolean;
     onTaskButtonClick?: TaskButtonClickHandler;
 }
-
 interface Zoom {
     headers: Header[];
     minWidth: number;
     fitWidth: boolean;
 }
-
 interface highlightedDurations {
     unit: string;
     fractions: number[];
 }
-
 type TaskButtonClickHandler = (task: TaskModel, event?: MouseEvent) => void;
 type TaskContentTemplate = (task: TaskModel) => string;
 type TaskElementHook = (task: SvelteTask, element: HTMLElement) => void;
-
 export interface SvelteGanttOptions {
     /**
      * Rows to load in the gantt
@@ -128,8 +119,8 @@ export interface SvelteGanttOptions {
     rowHeight?: number;
     rowPadding?: number;
     /** modules used in gantt */
-    ganttTableModules?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-    ganttBodyModules?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    ganttTableModules?: any[];
+    ganttBodyModules?: any[];
     /**
      * When task is assigned to a child row display them on parent rows as well, used when rows are disabled as a tree.
      */
@@ -143,11 +134,14 @@ export interface SvelteGanttOptions {
     /** width of handle for resizing task */
     resizeHandleWidth?: number;
     /** handler of button clicks */
-    onTaskButtonClick?: TaskButtonClickHandler; // e.g. (task) => {debugger},
+    onTaskButtonClick?: TaskButtonClickHandler;
     /** task content factory function */
-    taskContent?: TaskContentTemplate; // e.g. (task) => '<div>Custom task content</div>'
+    taskContent?: TaskContentTemplate;
     /** task element hook */
-    taskElementHook?: (node: HTMLElement, task: SvelteTask) => { update?(task); destroy?() };
+    taskElementHook?: (node: HTMLElement, task: SvelteTask) => {
+        update?(task: any): any;
+        destroy?(): any;
+    };
     /**
      * Width of table, used with SvelteGanttTable module
      */
@@ -157,7 +151,6 @@ export interface SvelteGanttOptions {
      */
     tableHeaders?: TableHeader[];
 }
-
 export interface SvelteGanttComponent extends Component<SvelteGanttOptions> {
     api: GanttApi;
     utils: GanttUtils;
@@ -166,22 +159,21 @@ export interface SvelteGanttComponent extends Component<SvelteGanttOptions> {
     taskFactory: TaskFactory;
     rowFactory: RowFactory;
     timeRangeFactory: TimeRangeFactory;
-
-    refreshTasks();
-    refreshTimeRanges();
+    refreshTasks(): any;
+    refreshTimeRanges(): any;
     getRowContainer(): HTMLElement;
-    selectTask(id: number);
-    unselectTasks();
-    scrollToTask(id: number, scrollBehavior?: string);
-    scrollToRow(id: number, scrollBehavior?: string);
-    withoutCSSTransition(callback: () => void | Promise<void>);
-    scrollTo(options: ScrollToOptions);
-
-    updateTask(model: TaskModel);
-    updateTasks(models: TaskModel[]);
-    updateRow(model: RowModel);
-    updateRowss(models: RowModel[]);
-    getTask(id): SvelteTask;
-    getTasks(resourceId): SvelteTask[];
-    getRow(id): SvelteRow;
+    selectTask(id: number): any;
+    unselectTasks(): any;
+    scrollToTask(id: number, scrollBehavior?: string): any;
+    scrollToRow(id: number, scrollBehavior?: string): any;
+    withoutCSSTransition(callback: () => void | Promise<void>): any;
+    scrollTo(options: ScrollToOptions): any;
+    updateTask(model: TaskModel): any;
+    updateTasks(models: TaskModel[]): any;
+    updateRow(model: RowModel): any;
+    updateRowss(models: RowModel[]): any;
+    getTask(id: any): SvelteTask;
+    getTasks(resourceId: any): SvelteTask[];
+    getRow(id: any): SvelteRow;
 }
+export {};

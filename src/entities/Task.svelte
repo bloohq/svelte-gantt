@@ -270,7 +270,7 @@
     $: {
         resizeEnabled =
             model.type !== 'milestone' &&
-            $rowStore.entities[model.resourceId].model.enableDragging &&
+            $rowStore.entities[model.resourceId]?.model.enableDragging &&
             model.enableDragging;
     }
 </script>

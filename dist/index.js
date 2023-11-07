@@ -2332,7 +2332,7 @@ function instance$d($$self, $$props, $$invalidate) {
 
 		if ($$self.$$.dirty[0] & /*model, $rowStore*/ 8388609) {
 			{
-				$$invalidate(7, resizeEnabled = model.type !== 'milestone' && $rowStore.entities[model.resourceId].model.enableDragging && model.enableDragging);
+				$$invalidate(7, resizeEnabled = model.type !== 'milestone' && $rowStore.entities[model.resourceId]?.model.enableDragging && model.enableDragging);
 			}
 		}
 	};

@@ -30,6 +30,7 @@
     import { DefaultSvelteGanttDateAdapter } from './utils/defaultDateAdapter';
     import type { SvelteGanttDateAdapter } from './utils/date';
     import * as packLayout from './core/pack-layout';
+    import * as pushLayout from './core/push-layout';
 
     function assertSet(values) {
         for (const name in values) {
@@ -143,7 +144,7 @@
     export let taskElementHook = null;
 
     /** Controls how the tasks will render */
-    export let layout: 'overlap' | 'pack' = 'overlap';
+    export let layout: 'overlap' | 'pack' | 'push' = 'overlap';
 
     /** Disable dragging of tasks */
     export let disableDragging = false;
@@ -213,14 +214,6 @@
         disableTransition = true;
         await tick();
         ganttElement.offsetHeight; // force a reflow
-        disableTransition = false;
-    }
-
-    /** Run a function without CSS transition */
-    export async function withoutCSSTransition(fn: () => void | Promise<void>) {
-        disableTransition = true;
-        await tick();
-        await fn();
         disableTransition = false;
     }
 
@@ -686,16 +679,13 @@
     $: rightScrollbarVisible = rowContainerHeight > $visibleHeight;
 
     let rowContainerHeight;
-    $: rowContainerHeight = filteredRows.length * rowHeight;
+    $: rowContainerHeight = filteredRows => filteredRows.reduce((acc, row) => acc + row.height, 0);
 
     let startIndex;
-    $: startIndex = Math.floor(__scrollTop / rowHeight);
+    $: startIndex = 0;
 
     let endIndex;
-    $: endIndex = Math.min(
-        startIndex + Math.ceil($visibleHeight / rowHeight),
-        filteredRows.length - 1
-    );
+    $: endIndex = filteredRows.length - 1;
 
     let paddingTop = 0;
     $: paddingTop = startIndex * rowHeight;
@@ -745,6 +735,25 @@
                 }
             }
         }
+
+        if (layout === 'push') {
+            let y = 0;
+            for (const rowId of $rowStore.ids) {
+                const row = $rowStore.entities[rowId];
+                const taskIds = $rowTaskCache[rowId];
+                if (taskIds) {
+                    const tasks = taskIds.map(taskId => $taskStore.entities[taskId]);
+                    pushLayout.layout(tasks, {
+                        row,
+                        rowHeight,
+                        rowContentHeight: rowHeight - rowPadding * 2,
+                        rowPadding
+                    });
+                }
+                row.y = y;
+                y += row.height;
+            }
+        }
     }
 </script>
 
@@ -767,6 +776,7 @@
             {paddingTop}
             {paddingBottom}
             {tableWidth}
+            {mounted}
             {...$$restProps}
             on:init={onModuleInit}
             {visibleRows}

@@ -2438,7 +2438,7 @@
 				if (if_block) if_block.c();
 				attr(div, "class", div_class_value = "sg-row " + /*row*/ ctx[0].model.classes + " svelte-7u5y5s");
 				attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[0].model.id);
-				set_style(div, "height", /*$rowHeight*/ ctx[3] + "px");
+				set_style(div, "height", (/*row*/ ctx[0].height ?? /*$rowHeight*/ ctx[3]) + "px");
 				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[1] == /*row*/ ctx[0].model.id);
 				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[2] == /*row*/ ctx[0].model.id);
 			},
@@ -2468,8 +2468,8 @@
 					attr(div, "data-row-id", div_data_row_id_value);
 				}
 
-				if (dirty & /*$rowHeight*/ 8) {
-					set_style(div, "height", /*$rowHeight*/ ctx[3] + "px");
+				if (dirty & /*row, $rowHeight*/ 9) {
+					set_style(div, "height", (/*row*/ ctx[0].height ?? /*$rowHeight*/ ctx[3]) + "px");
 				}
 
 				if (dirty & /*row, $hoveredRow, row*/ 3) {
@@ -4559,7 +4559,7 @@
 	 *
 	 * TODO:: tests, optimization: update only rows that have changes, update only overlapping tasks
 	 */
-	function layout(tasks, params) {
+	function layout$1(tasks, params) {
 	    if (!tasks.length) {
 	        return;
 	    }
@@ -4570,18 +4570,18 @@
 	        task.height = params.rowContentHeight;
 	        task.topDelta = (task.yPos * task.height); // + rowPadding which is added by taskfactory;
 	    }
-	    tasks.sort(_byStartThenByLongestSortFn);
+	    tasks.sort(_byStartThenByLongestSortFn$1);
 	    for (const left of tasks) {
 	        left.yPos = 0; // reset y positions
 	        left.intersectsWith = [];
 	        for (const right of tasks) {
-	            if (left !== right && _intersects(left, right)) {
+	            if (left !== right && _intersects$1(left, right)) {
 	                left.intersectsWith.push(right);
 	            }
 	        }
 	    }
 	    for (const task of tasks) {
-	        task.numYSlots = _getMaxIntersectsWithLength(task);
+	        task.numYSlots = _getMaxIntersectsWithLength$1(task);
 	        for (let i = 0; i < task.numYSlots; i++) {
 	            if (!task.intersectsWith.some(intersect => intersect.yPos === i)) {
 	                task.yPos = i;
@@ -4593,11 +4593,92 @@
 	    }
 	}
 	/** string intersection between tasks */
-	function _intersects(left, right) {
+	function _intersects$1(left, right) {
 	    return (left.left + left.width) > right.left && left.left < (right.left + right.width);
 	}
-	function _byStartThenByLongestSortFn(a, b) {
+	function _byStartThenByLongestSortFn$1(a, b) {
 	    return (a.left - b.left) || ((b.left + b.width) - (a.left + a.width));
+	}
+	/**
+	 * The maximum number of tasks a task, and the tasks task is intersecting with, task is intersecting with.
+	 * eg. If intersecting with 3, and one of those 3 is intersecting with 4 more, the number returned is 4,
+	 * because for the layout to look good we need to squeeze the first task in slots of 4.
+	 * @param task
+	 * @param seen
+	 * @returns
+	 */
+	function _getMaxIntersectsWithLength$1(task, seen = new Map()) {
+	    seen.set(task, true);
+	    // if (task.numYSlots != null) {
+	    //     return task.numYSlots;
+	    // }
+	    let len = task.intersectsWith.length + 1;
+	    for (const intersect of task.intersectsWith.filter(i => !seen.has(i))) {
+	        const innerLen = _getMaxIntersectsWithLength$1(intersect, seen);
+	        if (innerLen > len) {
+	            len = innerLen;
+	        }
+	    }
+	    return len;
+	}
+
+	/**
+	 * Layouts tasks in a 'push' layout:
+	 *  - expand row height to fit all tasks
+	 *
+	 * @param tasks
+	 * @param params
+	 *
+	 * TODO:: tests, optimization: update only rows that have changes, update only overlapping tasks
+	 */
+	function layout(tasks, params) {
+	    if (!tasks.length) {
+	        return;
+	    }
+	    const { row, rowHeight, rowContentHeight, rowPadding } = params;
+	    if (tasks.length === 1) {
+	        const task = tasks[0];
+	        task.yPos = 0;
+	        task.intersectsWith = [];
+	        task.height = rowContentHeight;
+	        task.topDelta = task.yPos * task.height; // + rowPadding which is added by taskfactory;
+	    }
+	    tasks.sort(_byStartThenByLongestSortFn);
+	    for (const left of tasks) {
+	        left.yPos = 0; // reset y positions
+	        left.intersectsWith = [];
+	        for (const right of tasks) {
+	            if (left !== right && _intersects(left, right)) {
+	                left.intersectsWith.push(right);
+	            }
+	        }
+	    }
+	    const maxSlot = tasks.reduce((m, t) => Math.max(m, _getMaxIntersectsWithLength(t)), 0);
+	    console.log({
+	        maxSlot,
+	        tasks,
+	        rowY: row.y
+	    });
+	    row.height = maxSlot * rowHeight;
+	    for (const task of tasks) {
+	        task.numYSlots = _getMaxIntersectsWithLength(task);
+	        for (let i = 0; i < task.numYSlots; i++) {
+	            if (!task.intersectsWith.some(intersect => intersect.yPos === i)) {
+	                console.log(`task ${task.model.label} has ${task.numYSlots} slots, and is placed in slot ${i}`);
+	                task.yPos = i;
+	                task.height = rowContentHeight;
+	                task.topDelta = task.height * task.yPos + rowPadding * i;
+	                break;
+	            }
+	        }
+	    }
+	}
+	/** string intersection between tasks */
+	function _intersects(left, right) {
+	    return left.left + left.width > right.left && left.left < right.left + right.width;
+	}
+	function _byStartThenByLongestSortFn(a, b) {
+	    return a.left - b.left || b.left + b.width - (a.left + a.width);
 	}
 	/**
 	 * The maximum number of tasks a task, and the tasks task is intersecting with, task is intersecting with.
@@ -4629,41 +4710,41 @@
 
 	function get_each_context$3(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[141] = list[i];
+		child_ctx[140] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_1$1(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[144] = list[i];
+		child_ctx[143] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_2(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[147] = list[i];
+		child_ctx[146] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_3(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[150] = list[i];
+		child_ctx[149] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_4(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[147] = list[i];
+		child_ctx[146] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_5(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[141] = list[i];
+		child_ctx[140] = list[i];
 		return child_ctx;
 	}
 
-	// (628:4) {#each ganttTableModules as module}
+	// (640:4) {#each ganttTableModules as module}
 	function create_each_block_5(ctx) {
 		let switch_instance;
 		let t;
@@ -4672,30 +4753,32 @@
 
 		const switch_instance_spread_levels = [
 			{
-				rowContainerHeight: /*rowContainerHeight*/ ctx[10]
+				rowContainerHeight: /*rowContainerHeight*/ ctx[11]
 			},
-			{ paddingTop: /*paddingTop*/ ctx[22] },
-			{ paddingBottom: /*paddingBottom*/ ctx[23] },
+			{ paddingTop: /*paddingTop*/ ctx[23] },
+			{ paddingBottom: /*paddingBottom*/ ctx[24] },
 			{ tableWidth: /*tableWidth*/ ctx[2] },
-			/*$$restProps*/ ctx[53],
-			{ visibleRows: /*visibleRows*/ ctx[11] }
+			{ mounted: /*mounted*/ ctx[10] },
+			/*$$restProps*/ ctx[54],
+			{ visibleRows: /*visibleRows*/ ctx[12] }
 		];
 
-		var switch_value = /*module*/ ctx[141];
+		var switch_value = /*module*/ ctx[140];
 
 		function switch_props(ctx, dirty) {
 			let switch_instance_props = {};
 
-			if (dirty !== undefined && dirty[0] & /*rowContainerHeight, paddingTop, paddingBottom, tableWidth, visibleRows*/ 12585988 | dirty[1] & /*$$restProps*/ 4194304) {
+			if (dirty !== undefined && dirty[0] & /*rowContainerHeight, paddingTop, paddingBottom, tableWidth, mounted, visibleRows*/ 25172996 | dirty[1] & /*$$restProps*/ 8388608) {
 				switch_instance_props = get_spread_update(switch_instance_spread_levels, [
-					dirty[0] & /*rowContainerHeight*/ 1024 && {
-						rowContainerHeight: /*rowContainerHeight*/ ctx[10]
+					dirty[0] & /*rowContainerHeight*/ 2048 && {
+						rowContainerHeight: /*rowContainerHeight*/ ctx[11]
 					},
-					dirty[0] & /*paddingTop*/ 4194304 && { paddingTop: /*paddingTop*/ ctx[22] },
-					dirty[0] & /*paddingBottom*/ 8388608 && { paddingBottom: /*paddingBottom*/ ctx[23] },
+					dirty[0] & /*paddingTop*/ 8388608 && { paddingTop: /*paddingTop*/ ctx[23] },
+					dirty[0] & /*paddingBottom*/ 16777216 && { paddingBottom: /*paddingBottom*/ ctx[24] },
 					dirty[0] & /*tableWidth*/ 4 && { tableWidth: /*tableWidth*/ ctx[2] },
-					dirty[1] & /*$$restProps*/ 4194304 && get_spread_object(/*$$restProps*/ ctx[53]),
-					dirty[0] & /*visibleRows*/ 2048 && { visibleRows: /*visibleRows*/ ctx[11] }
+					dirty[0] & /*mounted*/ 1024 && { mounted: /*mounted*/ ctx[10] },
+					dirty[1] & /*$$restProps*/ 8388608 && get_spread_object(/*$$restProps*/ ctx[54]),
+					dirty[0] & /*visibleRows*/ 4096 && { visibleRows: /*visibleRows*/ ctx[12] }
 				]);
 			} else {
 				for (let i = 0; i < switch_instance_spread_levels.length; i += 1) {
@@ -4714,11 +4797,11 @@
 		resizer = new Resizer({
 				props: {
 					x: /*tableWidth*/ ctx[2],
-					container: /*ganttElement*/ ctx[14]
+					container: /*ganttElement*/ ctx[15]
 				}
 			});
 
-		resizer.$on("resize", /*onResize*/ ctx[50]);
+		resizer.$on("resize", /*onResize*/ ctx[51]);
 
 		return {
 			c() {
@@ -4733,7 +4816,7 @@
 				current = true;
 			},
 			p(ctx, dirty) {
-				if (dirty[0] & /*ganttTableModules*/ 16 && switch_value !== (switch_value = /*module*/ ctx[141])) {
+				if (dirty[0] & /*ganttTableModules*/ 16 && switch_value !== (switch_value = /*module*/ ctx[140])) {
 					if (switch_instance) {
 						group_outros();
 						const old_component = switch_instance;
@@ -4755,16 +4838,17 @@
 						switch_instance = null;
 					}
 				} else if (switch_value) {
-					const switch_instance_changes = (dirty[0] & /*rowContainerHeight, paddingTop, paddingBottom, tableWidth, visibleRows*/ 12585988 | dirty[1] & /*$$restProps*/ 4194304)
+					const switch_instance_changes = (dirty[0] & /*rowContainerHeight, paddingTop, paddingBottom, tableWidth, mounted, visibleRows*/ 25172996 | dirty[1] & /*$$restProps*/ 8388608)
 					? get_spread_update(switch_instance_spread_levels, [
-							dirty[0] & /*rowContainerHeight*/ 1024 && {
-								rowContainerHeight: /*rowContainerHeight*/ ctx[10]
+							dirty[0] & /*rowContainerHeight*/ 2048 && {
+								rowContainerHeight: /*rowContainerHeight*/ ctx[11]
 							},
-							dirty[0] & /*paddingTop*/ 4194304 && { paddingTop: /*paddingTop*/ ctx[22] },
-							dirty[0] & /*paddingBottom*/ 8388608 && { paddingBottom: /*paddingBottom*/ ctx[23] },
+							dirty[0] & /*paddingTop*/ 8388608 && { paddingTop: /*paddingTop*/ ctx[23] },
+							dirty[0] & /*paddingBottom*/ 16777216 && { paddingBottom: /*paddingBottom*/ ctx[24] },
 							dirty[0] & /*tableWidth*/ 4 && { tableWidth: /*tableWidth*/ ctx[2] },
-							dirty[1] & /*$$restProps*/ 4194304 && get_spread_object(/*$$restProps*/ ctx[53]),
-							dirty[0] & /*visibleRows*/ 2048 && { visibleRows: /*visibleRows*/ ctx[11] }
+							dirty[0] & /*mounted*/ 1024 && { mounted: /*mounted*/ ctx[10] },
+							dirty[1] & /*$$restProps*/ 8388608 && get_spread_object(/*$$restProps*/ ctx[54]),
+							dirty[0] & /*visibleRows*/ 4096 && { visibleRows: /*visibleRows*/ ctx[12] }
 						])
 					: {};
 
@@ -4773,7 +4857,7 @@
 
 				const resizer_changes = {};
 				if (dirty[0] & /*tableWidth*/ 4) resizer_changes.x = /*tableWidth*/ ctx[2];
-				if (dirty[0] & /*ganttElement*/ 16384) resizer_changes.container = /*ganttElement*/ ctx[14];
+				if (dirty[0] & /*ganttElement*/ 32768) resizer_changes.container = /*ganttElement*/ ctx[15];
 				resizer.$set(resizer_changes);
 			},
 			i(local) {
@@ -4798,12 +4882,12 @@
 		};
 	}
 
-	// (658:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+	// (671:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 	function create_each_block_4(key_1, ctx) {
 		let first;
 		let timerangeheader;
 		let current;
-		const timerangeheader_spread_levels = [/*timeRange*/ ctx[147]];
+		const timerangeheader_spread_levels = [/*timeRange*/ ctx[146]];
 		let timerangeheader_props = {};
 
 		for (let i = 0; i < timerangeheader_spread_levels.length; i += 1) {
@@ -4828,8 +4912,8 @@
 			p(new_ctx, dirty) {
 				ctx = new_ctx;
 
-				const timerangeheader_changes = (dirty[0] & /*$allTimeRanges*/ 134217728)
-				? get_spread_update(timerangeheader_spread_levels, [get_spread_object(/*timeRange*/ ctx[147])])
+				const timerangeheader_changes = (dirty[0] & /*$allTimeRanges*/ 268435456)
+				? get_spread_update(timerangeheader_spread_levels, [get_spread_object(/*timeRange*/ ctx[146])])
 				: {};
 
 				timerangeheader.$set(timerangeheader_changes);
@@ -4853,12 +4937,12 @@
 		};
 	}
 
-	// (683:24) {#each visibleRows as row (row.model.id)}
+	// (696:24) {#each visibleRows as row (row.model.id)}
 	function create_each_block_3(key_1, ctx) {
 		let first;
 		let row_1;
 		let current;
-		row_1 = new Row({ props: { row: /*row*/ ctx[150] } });
+		row_1 = new Row({ props: { row: /*row*/ ctx[149] } });
 
 		return {
 			key: key_1,
@@ -4876,7 +4960,7 @@
 			p(new_ctx, dirty) {
 				ctx = new_ctx;
 				const row_1_changes = {};
-				if (dirty[0] & /*visibleRows*/ 2048) row_1_changes.row = /*row*/ ctx[150];
+				if (dirty[0] & /*visibleRows*/ 4096) row_1_changes.row = /*row*/ ctx[149];
 				row_1.$set(row_1_changes);
 			},
 			i(local) {
@@ -4898,12 +4982,12 @@
 		};
 	}
 
-	// (690:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+	// (703:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 	function create_each_block_2(key_1, ctx) {
 		let first;
 		let timerange;
 		let current;
-		const timerange_spread_levels = [/*timeRange*/ ctx[147]];
+		const timerange_spread_levels = [/*timeRange*/ ctx[146]];
 		let timerange_props = {};
 
 		for (let i = 0; i < timerange_spread_levels.length; i += 1) {
@@ -4928,8 +5012,8 @@
 			p(new_ctx, dirty) {
 				ctx = new_ctx;
 
-				const timerange_changes = (dirty[0] & /*$allTimeRanges*/ 134217728)
-				? get_spread_update(timerange_spread_levels, [get_spread_object(/*timeRange*/ ctx[147])])
+				const timerange_changes = (dirty[0] & /*$allTimeRanges*/ 268435456)
+				? get_spread_update(timerange_spread_levels, [get_spread_object(/*timeRange*/ ctx[146])])
 				: {};
 
 				timerange.$set(timerange_changes);
@@ -4953,22 +5037,22 @@
 		};
 	}
 
-	// (694:20) {#each visibleTasks as task (task.model.id)}
+	// (707:20) {#each visibleTasks as task (task.model.id)}
 	function create_each_block_1$1(key_1, ctx) {
 		let first;
 		let task_1;
 		let current;
 
 		const task_1_spread_levels = [
-			{ model: /*task*/ ctx[144].model },
-			{ left: /*task*/ ctx[144].left },
-			{ width: /*task*/ ctx[144].width },
-			{ height: /*task*/ ctx[144].height },
-			{ top: /*task*/ ctx[144].top },
+			{ model: /*task*/ ctx[143].model },
+			{ left: /*task*/ ctx[143].left },
+			{ width: /*task*/ ctx[143].width },
+			{ height: /*task*/ ctx[143].height },
+			{ top: /*task*/ ctx[143].top },
 			{
 				disableDragging: /*disableDragging*/ ctx[9]
 			},
-			/*task*/ ctx[144]
+			/*task*/ ctx[143]
 		];
 
 		let task_1_props = {};
@@ -4995,17 +5079,17 @@
 			p(new_ctx, dirty) {
 				ctx = new_ctx;
 
-				const task_1_changes = (dirty[0] & /*visibleTasks, disableDragging*/ 16777728)
+				const task_1_changes = (dirty[0] & /*visibleTasks, disableDragging*/ 33554944)
 				? get_spread_update(task_1_spread_levels, [
-						dirty[0] & /*visibleTasks*/ 16777216 && { model: /*task*/ ctx[144].model },
-						dirty[0] & /*visibleTasks*/ 16777216 && { left: /*task*/ ctx[144].left },
-						dirty[0] & /*visibleTasks*/ 16777216 && { width: /*task*/ ctx[144].width },
-						dirty[0] & /*visibleTasks*/ 16777216 && { height: /*task*/ ctx[144].height },
-						dirty[0] & /*visibleTasks*/ 16777216 && { top: /*task*/ ctx[144].top },
+						dirty[0] & /*visibleTasks*/ 33554432 && { model: /*task*/ ctx[143].model },
+						dirty[0] & /*visibleTasks*/ 33554432 && { left: /*task*/ ctx[143].left },
+						dirty[0] & /*visibleTasks*/ 33554432 && { width: /*task*/ ctx[143].width },
+						dirty[0] & /*visibleTasks*/ 33554432 && { height: /*task*/ ctx[143].height },
+						dirty[0] & /*visibleTasks*/ 33554432 && { top: /*task*/ ctx[143].top },
 						dirty[0] & /*disableDragging*/ 512 && {
 							disableDragging: /*disableDragging*/ ctx[9]
 						},
-						dirty[0] & /*visibleTasks*/ 16777216 && get_spread_object(/*task*/ ctx[144])
+						dirty[0] & /*visibleTasks*/ 33554432 && get_spread_object(/*task*/ ctx[143])
 					])
 				: {};
 
@@ -5030,30 +5114,30 @@
 		};
 	}
 
-	// (706:16) {#each ganttBodyModules as module}
+	// (719:16) {#each ganttBodyModules as module}
 	function create_each_block$3(ctx) {
 		let switch_instance;
 		let switch_instance_anchor;
 		let current;
 
 		const switch_instance_spread_levels = [
-			{ paddingTop: /*paddingTop*/ ctx[22] },
-			{ paddingBottom: /*paddingBottom*/ ctx[23] },
-			{ visibleRows: /*visibleRows*/ ctx[11] },
-			/*$$restProps*/ ctx[53]
+			{ paddingTop: /*paddingTop*/ ctx[23] },
+			{ paddingBottom: /*paddingBottom*/ ctx[24] },
+			{ visibleRows: /*visibleRows*/ ctx[12] },
+			/*$$restProps*/ ctx[54]
 		];
 
-		var switch_value = /*module*/ ctx[141];
+		var switch_value = /*module*/ ctx[140];
 
 		function switch_props(ctx, dirty) {
 			let switch_instance_props = {};
 
-			if (dirty !== undefined && dirty[0] & /*paddingTop, paddingBottom, visibleRows*/ 12584960 | dirty[1] & /*$$restProps*/ 4194304) {
+			if (dirty !== undefined && dirty[0] & /*paddingTop, paddingBottom, visibleRows*/ 25169920 | dirty[1] & /*$$restProps*/ 8388608) {
 				switch_instance_props = get_spread_update(switch_instance_spread_levels, [
-					dirty[0] & /*paddingTop*/ 4194304 && { paddingTop: /*paddingTop*/ ctx[22] },
-					dirty[0] & /*paddingBottom*/ 8388608 && { paddingBottom: /*paddingBottom*/ ctx[23] },
-					dirty[0] & /*visibleRows*/ 2048 && { visibleRows: /*visibleRows*/ ctx[11] },
-					dirty[1] & /*$$restProps*/ 4194304 && get_spread_object(/*$$restProps*/ ctx[53])
+					dirty[0] & /*paddingTop*/ 8388608 && { paddingTop: /*paddingTop*/ ctx[23] },
+					dirty[0] & /*paddingBottom*/ 16777216 && { paddingBottom: /*paddingBottom*/ ctx[24] },
+					dirty[0] & /*visibleRows*/ 4096 && { visibleRows: /*visibleRows*/ ctx[12] },
+					dirty[1] & /*$$restProps*/ 8388608 && get_spread_object(/*$$restProps*/ ctx[54])
 				]);
 			} else {
 				for (let i = 0; i < switch_instance_spread_levels.length; i += 1) {
@@ -5080,7 +5164,7 @@
 				current = true;
 			},
 			p(ctx, dirty) {
-				if (dirty[0] & /*ganttBodyModules*/ 32 && switch_value !== (switch_value = /*module*/ ctx[141])) {
+				if (dirty[0] & /*ganttBodyModules*/ 32 && switch_value !== (switch_value = /*module*/ ctx[140])) {
 					if (switch_instance) {
 						group_outros();
 						const old_component = switch_instance;
@@ -5102,12 +5186,12 @@
 						switch_instance = null;
 					}
 				} else if (switch_value) {
-					const switch_instance_changes = (dirty[0] & /*paddingTop, paddingBottom, visibleRows*/ 12584960 | dirty[1] & /*$$restProps*/ 4194304)
+					const switch_instance_changes = (dirty[0] & /*paddingTop, paddingBottom, visibleRows*/ 25169920 | dirty[1] & /*$$restProps*/ 8388608)
 					? get_spread_update(switch_instance_spread_levels, [
-							dirty[0] & /*paddingTop*/ 4194304 && { paddingTop: /*paddingTop*/ ctx[22] },
-							dirty[0] & /*paddingBottom*/ 8388608 && { paddingBottom: /*paddingBottom*/ ctx[23] },
-							dirty[0] & /*visibleRows*/ 2048 && { visibleRows: /*visibleRows*/ ctx[11] },
-							dirty[1] & /*$$restProps*/ 4194304 && get_spread_object(/*$$restProps*/ ctx[53])
+							dirty[0] & /*paddingTop*/ 8388608 && { paddingTop: /*paddingTop*/ ctx[23] },
+							dirty[0] & /*paddingBottom*/ 16777216 && { paddingBottom: /*paddingBottom*/ ctx[24] },
+							dirty[0] & /*visibleRows*/ 4096 && { visibleRows: /*visibleRows*/ ctx[12] },
+							dirty[1] & /*$$restProps*/ 8388608 && get_spread_object(/*$$restProps*/ ctx[54])
 						])
 					: {};
 
@@ -5181,14 +5265,14 @@
 		columnheader = new ColumnHeader({
 				props: {
 					headers: /*headers*/ ctx[1],
-					ganttBodyColumns: /*columns*/ ctx[19],
+					ganttBodyColumns: /*columns*/ ctx[20],
 					ganttBodyUnit: /*columnUnit*/ ctx[0]
 				}
 			});
 
-		columnheader.$on("dateSelected", /*onDateSelected*/ ctx[52]);
-		let each_value_4 = ensure_array_like(/*$allTimeRanges*/ ctx[27]);
-		const get_key = ctx => /*timeRange*/ ctx[147].model.id;
+		columnheader.$on("dateSelected", /*onDateSelected*/ ctx[53]);
+		let each_value_4 = ensure_array_like(/*$allTimeRanges*/ ctx[28]);
+		const get_key = ctx => /*timeRange*/ ctx[146].model.id;
 
 		for (let i = 0; i < each_value_4.length; i += 1) {
 			let child_ctx = get_each_context_4(ctx, each_value_4, i);
@@ -5198,15 +5282,15 @@
 
 		columns_1 = new Columns({
 				props: {
-					columns: /*columns*/ ctx[19],
+					columns: /*columns*/ ctx[20],
 					columnStrokeColor: /*columnStrokeColor*/ ctx[7],
 					columnStrokeWidth: /*columnStrokeWidth*/ ctx[8],
 					useCanvasColumns: /*useCanvasColumns*/ ctx[6]
 				}
 			});
 
-		let each_value_3 = ensure_array_like(/*visibleRows*/ ctx[11]);
-		const get_key_1 = ctx => /*row*/ ctx[150].model.id;
+		let each_value_3 = ensure_array_like(/*visibleRows*/ ctx[12]);
+		const get_key_1 = ctx => /*row*/ ctx[149].model.id;
 
 		for (let i = 0; i < each_value_3.length; i += 1) {
 			let child_ctx = get_each_context_3(ctx, each_value_3, i);
@@ -5214,8 +5298,8 @@
 			each2_lookup.set(key, each_blocks_3[i] = create_each_block_3(key, child_ctx));
 		}
 
-		let each_value_2 = ensure_array_like(/*$allTimeRanges*/ ctx[27]);
-		const get_key_2 = ctx => /*timeRange*/ ctx[147].model.id;
+		let each_value_2 = ensure_array_like(/*$allTimeRanges*/ ctx[28]);
+		const get_key_2 = ctx => /*timeRange*/ ctx[146].model.id;
 
 		for (let i = 0; i < each_value_2.length; i += 1) {
 			let child_ctx = get_each_context_2(ctx, each_value_2, i);
@@ -5223,8 +5307,8 @@
 			each3_lookup.set(key, each_blocks_2[i] = create_each_block_2(key, child_ctx));
 		}
 
-		let each_value_1 = ensure_array_like(/*visibleTasks*/ ctx[24]);
-		const get_key_3 = ctx => /*task*/ ctx[144].model.id;
+		let each_value_1 = ensure_array_like(/*visibleTasks*/ ctx[25]);
+		const get_key_3 = ctx => /*task*/ ctx[143].model.id;
 
 		for (let i = 0; i < each_value_1.length; i += 1) {
 			let child_ctx = get_each_context_1$1(ctx, each_value_1, i);
@@ -5295,23 +5379,23 @@
 				}
 
 				attr(div0, "class", "header-container");
-				set_style(div0, "width", /*$_width*/ ctx[13] + "px");
+				set_style(div0, "width", /*$_width*/ ctx[14] + "px");
 				attr(div1, "class", "sg-header-scroller svelte-b8et5x");
 				attr(div2, "class", "sg-header");
-				add_render_callback(() => /*div2_elementresize_handler*/ ctx[115].call(div2));
-				toggle_class(div2, "right-scrollbar-visible", /*rightScrollbarVisible*/ ctx[21]);
-				set_style(div3, "transform", "translateY(" + /*paddingTop*/ ctx[22] + "px)");
+				add_render_callback(() => /*div2_elementresize_handler*/ ctx[113].call(div2));
+				toggle_class(div2, "right-scrollbar-visible", /*rightScrollbarVisible*/ ctx[22]);
+				set_style(div3, "transform", "translateY(" + /*paddingTop*/ ctx[23] + "px)");
 				attr(div4, "class", "sg-rows svelte-b8et5x");
-				set_style(div4, "height", /*rowContainerHeight*/ ctx[10] + "px");
+				set_style(div4, "height", /*rowContainerHeight*/ ctx[11] + "px");
 				attr(div5, "class", "sg-foreground svelte-b8et5x");
 				attr(div6, "class", "content svelte-b8et5x");
-				set_style(div6, "width", /*$_width*/ ctx[13] + "px");
+				set_style(div6, "width", /*$_width*/ ctx[14] + "px");
 				attr(div7, "class", "sg-timeline-body svelte-b8et5x");
-				add_render_callback(() => /*div7_elementresize_handler*/ ctx[118].call(div7));
-				toggle_class(div7, "zooming", /*zooming*/ ctx[20]);
+				add_render_callback(() => /*div7_elementresize_handler*/ ctx[116].call(div7));
+				toggle_class(div7, "zooming", /*zooming*/ ctx[21]);
 				attr(div8, "class", "sg-timeline sg-view svelte-b8et5x");
 				attr(div9, "class", div9_class_value = "sg-gantt " + /*classes*/ ctx[3] + " svelte-b8et5x");
-				toggle_class(div9, "sg-disable-transition", /*disableTransition*/ ctx[18]);
+				toggle_class(div9, "sg-disable-transition", /*disableTransition*/ ctx[19]);
 			},
 			m(target, anchor) {
 				insert(target, div9, anchor);
@@ -5336,8 +5420,8 @@
 					}
 				}
 
-				/*div2_binding*/ ctx[114](div2);
-				div2_resize_listener = add_iframe_resize_listener(div2, /*div2_elementresize_handler*/ ctx[115].bind(div2));
+				/*div2_binding*/ ctx[112](div2);
+				div2_resize_listener = add_iframe_resize_listener(div2, /*div2_elementresize_handler*/ ctx[113].bind(div2));
 				append(div8, t2);
 				append(div8, div7);
 				append(div7, div6);
@@ -5352,7 +5436,7 @@
 					}
 				}
 
-				/*div4_binding*/ ctx[116](div4);
+				/*div4_binding*/ ctx[114](div4);
 				append(div6, t4);
 				append(div6, div5);
 
@@ -5378,28 +5462,28 @@
 					}
 				}
 
-				/*div7_binding*/ ctx[117](div7);
-				div7_resize_listener = add_iframe_resize_listener(div7, /*div7_elementresize_handler*/ ctx[118].bind(div7));
-				/*div9_binding*/ ctx[119](div9);
+				/*div7_binding*/ ctx[115](div7);
+				div7_resize_listener = add_iframe_resize_listener(div7, /*div7_elementresize_handler*/ ctx[116].bind(div7));
+				/*div9_binding*/ ctx[117](div9);
 				current = true;
 
 				if (!mounted) {
 					dispose = [
-						action_destroyer(/*horizontalScrollListener*/ ctx[49].call(null, div1)),
-						action_destroyer(/*scrollable*/ ctx[48].call(null, div7)),
-						listen(div7, "wheel", /*onwheel*/ ctx[51]),
-						listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[47])),
-						listen(div9, "click", stop_propagation(/*onEvent*/ ctx[47])),
-						listen(div9, "dblclick", /*onEvent*/ ctx[47]),
-						listen(div9, "mouseover", /*onEvent*/ ctx[47]),
-						listen(div9, "mouseleave", /*onEvent*/ ctx[47])
+						action_destroyer(/*horizontalScrollListener*/ ctx[50].call(null, div1)),
+						action_destroyer(/*scrollable*/ ctx[49].call(null, div7)),
+						listen(div7, "wheel", /*onwheel*/ ctx[52]),
+						listen(div9, "mousedown", stop_propagation(/*onEvent*/ ctx[48])),
+						listen(div9, "click", stop_propagation(/*onEvent*/ ctx[48])),
+						listen(div9, "dblclick", /*onEvent*/ ctx[48]),
+						listen(div9, "mouseover", /*onEvent*/ ctx[48]),
+						listen(div9, "mouseleave", /*onEvent*/ ctx[48])
 					];
 
 					mounted = true;
 				}
 			},
 			p(ctx, dirty) {
-				if (dirty[0] & /*tableWidth, ganttElement, ganttTableModules, rowContainerHeight, paddingTop, paddingBottom, visibleRows*/ 12602388 | dirty[1] & /*onResize, $$restProps*/ 4718592) {
+				if (dirty[0] & /*tableWidth, ganttElement, ganttTableModules, rowContainerHeight, paddingTop, paddingBottom, mounted, visibleRows*/ 25205780 | dirty[1] & /*onResize, $$restProps*/ 9437184) {
 					each_value_5 = ensure_array_like(/*ganttTableModules*/ ctx[4]);
 					let i;
 
@@ -5428,62 +5512,62 @@
 
 				const columnheader_changes = {};
 				if (dirty[0] & /*headers*/ 2) columnheader_changes.headers = /*headers*/ ctx[1];
-				if (dirty[0] & /*columns*/ 524288) columnheader_changes.ganttBodyColumns = /*columns*/ ctx[19];
+				if (dirty[0] & /*columns*/ 1048576) columnheader_changes.ganttBodyColumns = /*columns*/ ctx[20];
 				if (dirty[0] & /*columnUnit*/ 1) columnheader_changes.ganttBodyUnit = /*columnUnit*/ ctx[0];
 				columnheader.$set(columnheader_changes);
 
-				if (dirty[0] & /*$allTimeRanges*/ 134217728) {
-					each_value_4 = ensure_array_like(/*$allTimeRanges*/ ctx[27]);
+				if (dirty[0] & /*$allTimeRanges*/ 268435456) {
+					each_value_4 = ensure_array_like(/*$allTimeRanges*/ ctx[28]);
 					group_outros();
 					each_blocks_4 = update_keyed_each(each_blocks_4, dirty, get_key, 1, ctx, each_value_4, each1_lookup, div0, outro_and_destroy_block, create_each_block_4, null, get_each_context_4);
 					check_outros();
 				}
 
-				if (!current || dirty[0] & /*$_width*/ 8192) {
-					set_style(div0, "width", /*$_width*/ ctx[13] + "px");
+				if (!current || dirty[0] & /*$_width*/ 16384) {
+					set_style(div0, "width", /*$_width*/ ctx[14] + "px");
 				}
 
-				if (!current || dirty[0] & /*rightScrollbarVisible*/ 2097152) {
-					toggle_class(div2, "right-scrollbar-visible", /*rightScrollbarVisible*/ ctx[21]);
+				if (!current || dirty[0] & /*rightScrollbarVisible*/ 4194304) {
+					toggle_class(div2, "right-scrollbar-visible", /*rightScrollbarVisible*/ ctx[22]);
 				}
 
 				const columns_1_changes = {};
-				if (dirty[0] & /*columns*/ 524288) columns_1_changes.columns = /*columns*/ ctx[19];
+				if (dirty[0] & /*columns*/ 1048576) columns_1_changes.columns = /*columns*/ ctx[20];
 				if (dirty[0] & /*columnStrokeColor*/ 128) columns_1_changes.columnStrokeColor = /*columnStrokeColor*/ ctx[7];
 				if (dirty[0] & /*columnStrokeWidth*/ 256) columns_1_changes.columnStrokeWidth = /*columnStrokeWidth*/ ctx[8];
 				if (dirty[0] & /*useCanvasColumns*/ 64) columns_1_changes.useCanvasColumns = /*useCanvasColumns*/ ctx[6];
 				columns_1.$set(columns_1_changes);
 
-				if (dirty[0] & /*visibleRows*/ 2048) {
-					each_value_3 = ensure_array_like(/*visibleRows*/ ctx[11]);
+				if (dirty[0] & /*visibleRows*/ 4096) {
+					each_value_3 = ensure_array_like(/*visibleRows*/ ctx[12]);
 					group_outros();
 					each_blocks_3 = update_keyed_each(each_blocks_3, dirty, get_key_1, 1, ctx, each_value_3, each2_lookup, div3, outro_and_destroy_block, create_each_block_3, null, get_each_context_3);
 					check_outros();
 				}
 
-				if (!current || dirty[0] & /*paddingTop*/ 4194304) {
-					set_style(div3, "transform", "translateY(" + /*paddingTop*/ ctx[22] + "px)");
+				if (!current || dirty[0] & /*paddingTop*/ 8388608) {
+					set_style(div3, "transform", "translateY(" + /*paddingTop*/ ctx[23] + "px)");
 				}
 
-				if (!current || dirty[0] & /*rowContainerHeight*/ 1024) {
-					set_style(div4, "height", /*rowContainerHeight*/ ctx[10] + "px");
+				if (!current || dirty[0] & /*rowContainerHeight*/ 2048) {
+					set_style(div4, "height", /*rowContainerHeight*/ ctx[11] + "px");
 				}
 
-				if (dirty[0] & /*$allTimeRanges*/ 134217728) {
-					each_value_2 = ensure_array_like(/*$allTimeRanges*/ ctx[27]);
+				if (dirty[0] & /*$allTimeRanges*/ 268435456) {
+					each_value_2 = ensure_array_like(/*$allTimeRanges*/ ctx[28]);
 					group_outros();
 					each_blocks_2 = update_keyed_each(each_blocks_2, dirty, get_key_2, 1, ctx, each_value_2, each3_lookup, div5, outro_and_destroy_block, create_each_block_2, t5, get_each_context_2);
 					check_outros();
 				}
 
-				if (dirty[0] & /*visibleTasks, disableDragging*/ 16777728) {
-					each_value_1 = ensure_array_like(/*visibleTasks*/ ctx[24]);
+				if (dirty[0] & /*visibleTasks, disableDragging*/ 33554944) {
+					each_value_1 = ensure_array_like(/*visibleTasks*/ ctx[25]);
 					group_outros();
 					each_blocks_1 = update_keyed_each(each_blocks_1, dirty, get_key_3, 1, ctx, each_value_1, each4_lookup, div5, outro_and_destroy_block, create_each_block_1$1, null, get_each_context_1$1);
 					check_outros();
 				}
 
-				if (dirty[0] & /*ganttBodyModules, paddingTop, paddingBottom, visibleRows*/ 12584992 | dirty[1] & /*$$restProps*/ 4194304) {
+				if (dirty[0] & /*ganttBodyModules, paddingTop, paddingBottom, visibleRows*/ 25169952 | dirty[1] & /*$$restProps*/ 8388608) {
 					each_value = ensure_array_like(/*ganttBodyModules*/ ctx[5]);
 					let i;
 
@@ -5510,20 +5594,20 @@
 					check_outros();
 				}
 
-				if (!current || dirty[0] & /*$_width*/ 8192) {
-					set_style(div6, "width", /*$_width*/ ctx[13] + "px");
+				if (!current || dirty[0] & /*$_width*/ 16384) {
+					set_style(div6, "width", /*$_width*/ ctx[14] + "px");
 				}
 
-				if (!current || dirty[0] & /*zooming*/ 1048576) {
-					toggle_class(div7, "zooming", /*zooming*/ ctx[20]);
+				if (!current || dirty[0] & /*zooming*/ 2097152) {
+					toggle_class(div7, "zooming", /*zooming*/ ctx[21]);
 				}
 
 				if (!current || dirty[0] & /*classes*/ 8 && div9_class_value !== (div9_class_value = "sg-gantt " + /*classes*/ ctx[3] + " svelte-b8et5x")) {
 					attr(div9, "class", div9_class_value);
 				}
 
-				if (!current || dirty[0] & /*classes, disableTransition*/ 262152) {
-					toggle_class(div9, "sg-disable-transition", /*disableTransition*/ ctx[18]);
+				if (!current || dirty[0] & /*classes, disableTransition*/ 524296) {
+					toggle_class(div9, "sg-disable-transition", /*disableTransition*/ ctx[19]);
 				}
 			},
 			i(local) {
@@ -5606,7 +5690,7 @@
 					each_blocks_4[i].d();
 				}
 
-				/*div2_binding*/ ctx[114](null);
+				/*div2_binding*/ ctx[112](null);
 				div2_resize_listener();
 				destroy_component(columns_1);
 
@@ -5614,7 +5698,7 @@
 					each_blocks_3[i].d();
 				}
 
-				/*div4_binding*/ ctx[116](null);
+				/*div4_binding*/ ctx[114](null);
 
 				for (let i = 0; i < each_blocks_2.length; i += 1) {
 					each_blocks_2[i].d();
@@ -5625,9 +5709,9 @@
 				}
 
 				destroy_each(each_blocks, detaching);
-				/*div7_binding*/ ctx[117](null);
+				/*div7_binding*/ ctx[115](null);
 				div7_resize_listener();
-				/*div9_binding*/ ctx[119](null);
+				/*div9_binding*/ ctx[117](null);
 				mounted = false;
 				run_all(dispose);
 			}
@@ -5652,7 +5736,7 @@
 
 	function instance$5($$self, $$props, $$invalidate) {
 		const omit_props_names = [
-			"rows","tasks","timeRanges","rowPadding","rowHeight","from","to","minWidth","fitWidth","classes","headers","zoomLevels","taskContent","tableWidth","resizeHandleWidth","onTaskButtonClick","dateAdapter","magnetUnit","magnetOffset","columnUnit","columnOffset","ganttTableModules","ganttBodyModules","reflectOnParentRows","reflectOnChildRows","useCanvasColumns","columnStrokeColor","columnStrokeWidth","highlightedDurations","highlightColor","taskElementHook","layout","disableDragging","columnService","withoutCSSTransition","scrollTo","api","taskFactory","rowFactory","dndManager","timeRangeFactory","utils","refreshTimeRanges","refreshTasks","getRowContainer","selectTask","unselectTasks","scrollToRow","scrollToTask","updateTask","updateTasks","updateRow","updateRows","getRow","getTask","getTasks"
+			"rows","tasks","timeRanges","rowPadding","rowHeight","from","to","minWidth","fitWidth","classes","headers","zoomLevels","taskContent","tableWidth","resizeHandleWidth","onTaskButtonClick","dateAdapter","magnetUnit","magnetOffset","columnUnit","columnOffset","ganttTableModules","ganttBodyModules","reflectOnParentRows","reflectOnChildRows","useCanvasColumns","columnStrokeColor","columnStrokeWidth","highlightedDurations","highlightColor","taskElementHook","layout","disableDragging","columnService","scrollTo","api","taskFactory","rowFactory","dndManager","timeRangeFactory","utils","refreshTimeRanges","refreshTasks","getRowContainer","selectTask","unselectTasks","scrollToRow","scrollToTask","updateTask","updateTasks","updateRow","updateRows","getRow","getTask","getTasks"
 		];
 
 		let $$restProps = compute_rest_props($$props, omit_props_names);
@@ -5688,22 +5772,22 @@
 		let { rowPadding = 6 } = $$props;
 		let { rowHeight = 52 } = $$props;
 		const _rowHeight = writable(rowHeight);
-		component_subscribe($$self, _rowHeight, value => $$invalidate(127, $_rowHeight = value));
+		component_subscribe($$self, _rowHeight, value => $$invalidate(126, $_rowHeight = value));
 		const _rowPadding = writable(rowPadding);
-		component_subscribe($$self, _rowPadding, value => $$invalidate(113, $_rowPadding = value));
+		component_subscribe($$self, _rowPadding, value => $$invalidate(111, $_rowPadding = value));
 		let { from } = $$props;
 		let { to } = $$props;
 		assertSet({ from, to });
 		const _from = writable(toDateNum(from));
-		component_subscribe($$self, _from, value => $$invalidate(112, $_from = value));
+		component_subscribe($$self, _from, value => $$invalidate(110, $_from = value));
 		const _to = writable(toDateNum(to));
-		component_subscribe($$self, _to, value => $$invalidate(111, $_to = value));
+		component_subscribe($$self, _to, value => $$invalidate(109, $_to = value));
 		let { minWidth = 800 } = $$props;
 		let { fitWidth = false } = $$props;
 		const _minWidth = writable(minWidth);
-		component_subscribe($$self, _minWidth, value => $$invalidate(124, $_minWidth = value));
+		component_subscribe($$self, _minWidth, value => $$invalidate(123, $_minWidth = value));
 		const _fitWidth = writable(fitWidth);
-		component_subscribe($$self, _fitWidth, value => $$invalidate(123, $_fitWidth = value));
+		component_subscribe($$self, _fitWidth, value => $$invalidate(122, $_fitWidth = value));
 		let { classes = [] } = $$props;
 		let { headers = [{ unit: 'day', format: 'MMMM Do' }, { unit: 'hour', format: 'H:mm' }] } = $$props;
 
@@ -5735,7 +5819,7 @@
 
 		function setMagnetDuration(unit, offset) {
 			if (unit && offset) {
-				$$invalidate(101, magnetDuration = getDuration(unit, offset));
+				$$invalidate(100, magnetDuration = getDuration(unit, offset));
 			}
 		}
 
@@ -5751,30 +5835,30 @@
 		let { highlightedDurations } = $$props;
 		let { highlightColor = '#6eb859' } = $$props;
 		let { taskElementHook = null } = $$props;
-		let { layout: layout$1 = 'overlap' } = $$props;
+		let { layout: layout$2 = 'overlap' } = $$props;
 		let { disableDragging = false } = $$props;
 		const visibleWidth = writable(null);
-		component_subscribe($$self, visibleWidth, value => $$invalidate(25, $visibleWidth = value));
+		component_subscribe($$self, visibleWidth, value => $$invalidate(26, $visibleWidth = value));
 		const visibleHeight = writable(null);
-		component_subscribe($$self, visibleHeight, value => $$invalidate(12, $visibleHeight = value));
+		component_subscribe($$self, visibleHeight, value => $$invalidate(13, $visibleHeight = value));
 		const headerHeight = writable(null);
-		component_subscribe($$self, headerHeight, value => $$invalidate(26, $headerHeight = value));
+		component_subscribe($$self, headerHeight, value => $$invalidate(27, $headerHeight = value));
 
 		const _width = derived([visibleWidth, _minWidth, _fitWidth], ([visible, min, stretch]) => {
 			return stretch && visible > min ? visible : min;
 		});
 
-		component_subscribe($$self, _width, value => $$invalidate(13, $_width = value));
+		component_subscribe($$self, _width, value => $$invalidate(14, $_width = value));
 		const dataStore = createDataStore();
 		setContext('dataStore', dataStore);
 		const { rowStore, taskStore, timeRangeStore, allTasks, allRows, allTimeRanges, rowTaskCache, draggingTaskCache } = dataStore;
-		component_subscribe($$self, rowStore, value => $$invalidate(108, $rowStore = value));
-		component_subscribe($$self, taskStore, value => $$invalidate(106, $taskStore = value));
-		component_subscribe($$self, allTasks, value => $$invalidate(122, $allTasks = value));
-		component_subscribe($$self, allRows, value => $$invalidate(110, $allRows = value));
-		component_subscribe($$self, allTimeRanges, value => $$invalidate(27, $allTimeRanges = value));
-		component_subscribe($$self, rowTaskCache, value => $$invalidate(107, $rowTaskCache = value));
-		component_subscribe($$self, draggingTaskCache, value => $$invalidate(109, $draggingTaskCache = value));
+		component_subscribe($$self, rowStore, value => $$invalidate(106, $rowStore = value));
+		component_subscribe($$self, taskStore, value => $$invalidate(104, $taskStore = value));
+		component_subscribe($$self, allTasks, value => $$invalidate(121, $allTasks = value));
+		component_subscribe($$self, allRows, value => $$invalidate(108, $allRows = value));
+		component_subscribe($$self, allTimeRanges, value => $$invalidate(28, $allTimeRanges = value));
+		component_subscribe($$self, rowTaskCache, value => $$invalidate(105, $rowTaskCache = value));
+		component_subscribe($$self, draggingTaskCache, value => $$invalidate(107, $draggingTaskCache = value));
 
 		const columnService = {
 			getColumnByDate(date) {
@@ -5815,17 +5899,10 @@
 		let disableTransition = false;
 
 		async function tickWithoutCSSTransition() {
-			$$invalidate(18, disableTransition = true);
+			$$invalidate(19, disableTransition = true);
 			await tick();
 			ganttElement.offsetHeight; // force a reflow
-			$$invalidate(18, disableTransition = false);
-		}
-
-		async function withoutCSSTransition(fn) {
-			$$invalidate(18, disableTransition = true);
-			await tick();
-			await fn();
-			$$invalidate(18, disableTransition = false);
+			$$invalidate(19, disableTransition = false);
 		}
 
 		function scrollTo(options) {
@@ -5883,9 +5960,9 @@
 		});
 
 		const hoveredRow = writable(null);
-		component_subscribe($$self, hoveredRow, value => $$invalidate(125, $hoveredRow = value));
+		component_subscribe($$self, hoveredRow, value => $$invalidate(124, $hoveredRow = value));
 		const selectedRow = writable(null);
-		component_subscribe($$self, selectedRow, value => $$invalidate(126, $selectedRow = value));
+		component_subscribe($$self, selectedRow, value => $$invalidate(125, $selectedRow = value));
 		const ganttContext = { scrollables, hoveredRow, selectedRow };
 		setContext('gantt', ganttContext);
 
@@ -5908,7 +5985,7 @@
 			api.registerEvent('tasks', 'dblclicked');
 			api.registerEvent('timeranges', 'clicked');
 			api.registerEvent('timeranges', 'resized');
-			$$invalidate(100, mounted = true);
+			$$invalidate(10, mounted = true);
 		});
 
 		const { onDelegatedEvent, offDelegatedEvent, onEvent } = createDelegatedEventDispatcher();
@@ -5961,8 +6038,6 @@
 			selectionManager.unSelectTasks();
 		});
 
-		let __scrollTop = 0;
-
 		function scrollable(node) {
 			const onscroll = event => {
 				const { scrollTop, scrollLeft, scrollWidth } = node;
@@ -5982,8 +6057,6 @@
 						scrollable.node.scrollTop = scrollTop;
 					}
 				});
-
-				$$invalidate(102, __scrollTop = scrollTop);
 			};
 
 			node.addEventListener('scroll', onscroll);
@@ -6032,15 +6105,15 @@
 					const after = before * scale;
 					const scrollLeft = after - mousepos.x + node.clientWidth / 2;
 					$$invalidate(0, columnUnit = options.columnUnit);
-					$$invalidate(54, columnOffset = options.columnOffset);
+					$$invalidate(55, columnOffset = options.columnOffset);
 					set_store_value(_minWidth, $_minWidth = options.minWidth, $_minWidth);
 					if (options.headers) $$invalidate(1, headers = options.headers);
 					if (options.fitWidth) set_store_value(_fitWidth, $_fitWidth = options.fitWidth, $_fitWidth);
 					api['gantt'].raise.viewChanged();
-					$$invalidate(20, zooming = true);
+					$$invalidate(21, zooming = true);
 					await tick();
 					node.scrollLeft = scrollLeft;
-					$$invalidate(20, zooming = false);
+					$$invalidate(21, zooming = false);
 				}
 			}
 		}
@@ -6255,7 +6328,7 @@
 		function div2_binding($$value) {
 			binding_callbacks[$$value ? 'unshift' : 'push'](() => {
 				mainHeaderContainer = $$value;
-				$$invalidate(15, mainHeaderContainer);
+				$$invalidate(16, mainHeaderContainer);
 			});
 		}
 
@@ -6267,14 +6340,14 @@
 		function div4_binding($$value) {
 			binding_callbacks[$$value ? 'unshift' : 'push'](() => {
 				rowContainer = $$value;
-				$$invalidate(17, rowContainer);
+				$$invalidate(18, rowContainer);
 			});
 		}
 
 		function div7_binding($$value) {
 			binding_callbacks[$$value ? 'unshift' : 'push'](() => {
 				mainContainer = $$value;
-				$$invalidate(16, mainContainer);
+				$$invalidate(17, mainContainer);
 			});
 		}
 
@@ -6288,154 +6361,146 @@
 		function div9_binding($$value) {
 			binding_callbacks[$$value ? 'unshift' : 'push'](() => {
 				ganttElement = $$value;
-				$$invalidate(14, ganttElement);
+				$$invalidate(15, ganttElement);
 			});
 		}
 
 		$$self.$$set = $$new_props => {
 			$$props = assign(assign({}, $$props), exclude_internal_props($$new_props));
-			$$invalidate(53, $$restProps = compute_rest_props($$props, omit_props_names));
-			if ('rows' in $$new_props) $$invalidate(58, rows = $$new_props.rows);
-			if ('tasks' in $$new_props) $$invalidate(59, tasks = $$new_props.tasks);
-			if ('timeRanges' in $$new_props) $$invalidate(60, timeRanges = $$new_props.timeRanges);
-			if ('rowPadding' in $$new_props) $$invalidate(61, rowPadding = $$new_props.rowPadding);
-			if ('rowHeight' in $$new_props) $$invalidate(62, rowHeight = $$new_props.rowHeight);
-			if ('from' in $$new_props) $$invalidate(63, from = $$new_props.from);
-			if ('to' in $$new_props) $$invalidate(64, to = $$new_props.to);
-			if ('minWidth' in $$new_props) $$invalidate(65, minWidth = $$new_props.minWidth);
-			if ('fitWidth' in $$new_props) $$invalidate(66, fitWidth = $$new_props.fitWidth);
+			$$invalidate(54, $$restProps = compute_rest_props($$props, omit_props_names));
+			if ('rows' in $$new_props) $$invalidate(59, rows = $$new_props.rows);
+			if ('tasks' in $$new_props) $$invalidate(60, tasks = $$new_props.tasks);
+			if ('timeRanges' in $$new_props) $$invalidate(61, timeRanges = $$new_props.timeRanges);
+			if ('rowPadding' in $$new_props) $$invalidate(62, rowPadding = $$new_props.rowPadding);
+			if ('rowHeight' in $$new_props) $$invalidate(63, rowHeight = $$new_props.rowHeight);
+			if ('from' in $$new_props) $$invalidate(64, from = $$new_props.from);
+			if ('to' in $$new_props) $$invalidate(65, to = $$new_props.to);
+			if ('minWidth' in $$new_props) $$invalidate(66, minWidth = $$new_props.minWidth);
+			if ('fitWidth' in $$new_props) $$invalidate(67, fitWidth = $$new_props.fitWidth);
 			if ('classes' in $$new_props) $$invalidate(3, classes = $$new_props.classes);
 			if ('headers' in $$new_props) $$invalidate(1, headers = $$new_props.headers);
-			if ('zoomLevels' in $$new_props) $$invalidate(67, zoomLevels = $$new_props.zoomLevels);
-			if ('taskContent' in $$new_props) $$invalidate(68, taskContent = $$new_props.taskContent);
+			if ('zoomLevels' in $$new_props) $$invalidate(68, zoomLevels = $$new_props.zoomLevels);
+			if ('taskContent' in $$new_props) $$invalidate(69, taskContent = $$new_props.taskContent);
 			if ('tableWidth' in $$new_props) $$invalidate(2, tableWidth = $$new_props.tableWidth);
-			if ('resizeHandleWidth' in $$new_props) $$invalidate(69, resizeHandleWidth = $$new_props.resizeHandleWidth);
-			if ('onTaskButtonClick' in $$new_props) $$invalidate(70, onTaskButtonClick = $$new_props.onTaskButtonClick);
-			if ('dateAdapter' in $$new_props) $$invalidate(71, dateAdapter = $$new_props.dateAdapter);
-			if ('magnetUnit' in $$new_props) $$invalidate(72, magnetUnit = $$new_props.magnetUnit);
-			if ('magnetOffset' in $$new_props) $$invalidate(73, magnetOffset = $$new_props.magnetOffset);
+			if ('resizeHandleWidth' in $$new_props) $$invalidate(70, resizeHandleWidth = $$new_props.resizeHandleWidth);
+			if ('onTaskButtonClick' in $$new_props) $$invalidate(71, onTaskButtonClick = $$new_props.onTaskButtonClick);
+			if ('dateAdapter' in $$new_props) $$invalidate(72, dateAdapter = $$new_props.dateAdapter);
+			if ('magnetUnit' in $$new_props) $$invalidate(73, magnetUnit = $$new_props.magnetUnit);
+			if ('magnetOffset' in $$new_props) $$invalidate(74, magnetOffset = $$new_props.magnetOffset);
 			if ('columnUnit' in $$new_props) $$invalidate(0, columnUnit = $$new_props.columnUnit);
-			if ('columnOffset' in $$new_props) $$invalidate(54, columnOffset = $$new_props.columnOffset);
+			if ('columnOffset' in $$new_props) $$invalidate(55, columnOffset = $$new_props.columnOffset);
 			if ('ganttTableModules' in $$new_props) $$invalidate(4, ganttTableModules = $$new_props.ganttTableModules);
 			if ('ganttBodyModules' in $$new_props) $$invalidate(5, ganttBodyModules = $$new_props.ganttBodyModules);
-			if ('reflectOnParentRows' in $$new_props) $$invalidate(74, reflectOnParentRows = $$new_props.reflectOnParentRows);
-			if ('reflectOnChildRows' in $$new_props) $$invalidate(75, reflectOnChildRows = $$new_props.reflectOnChildRows);
+			if ('reflectOnParentRows' in $$new_props) $$invalidate(75, reflectOnParentRows = $$new_props.reflectOnParentRows);
+			if ('reflectOnChildRows' in $$new_props) $$invalidate(76, reflectOnChildRows = $$new_props.reflectOnChildRows);
 			if ('useCanvasColumns' in $$new_props) $$invalidate(6, useCanvasColumns = $$new_props.useCanvasColumns);
 			if ('columnStrokeColor' in $$new_props) $$invalidate(7, columnStrokeColor = $$new_props.columnStrokeColor);
 			if ('columnStrokeWidth' in $$new_props) $$invalidate(8, columnStrokeWidth = $$new_props.columnStrokeWidth);
-			if ('highlightedDurations' in $$new_props) $$invalidate(76, highlightedDurations = $$new_props.highlightedDurations);
-			if ('highlightColor' in $$new_props) $$invalidate(77, highlightColor = $$new_props.highlightColor);
-			if ('taskElementHook' in $$new_props) $$invalidate(78, taskElementHook = $$new_props.taskElementHook);
-			if ('layout' in $$new_props) $$invalidate(79, layout$1 = $$new_props.layout);
+			if ('highlightedDurations' in $$new_props) $$invalidate(77, highlightedDurations = $$new_props.highlightedDurations);
+			if ('highlightColor' in $$new_props) $$invalidate(78, highlightColor = $$new_props.highlightColor);
+			if ('taskElementHook' in $$new_props) $$invalidate(79, taskElementHook = $$new_props.taskElementHook);
+			if ('layout' in $$new_props) $$invalidate(80, layout$2 = $$new_props.layout);
 			if ('disableDragging' in $$new_props) $$invalidate(9, disableDragging = $$new_props.disableDragging);
 		};
 
 		$$self.$$.update = () => {
-			if ($$self.$$.dirty[1] & /*rows*/ 134217728 | $$self.$$.dirty[3] & /*mounted*/ 128) {
+			if ($$self.$$.dirty[0] & /*mounted*/ 1024 | $$self.$$.dirty[1] & /*rows*/ 268435456) {
 				if (mounted) initRows(rows);
 			}
 
-			if ($$self.$$.dirty[1] & /*tasks*/ 268435456 | $$self.$$.dirty[3] & /*mounted*/ 128) {
+			if ($$self.$$.dirty[0] & /*mounted*/ 1024 | $$self.$$.dirty[1] & /*tasks*/ 536870912) {
 				if (mounted) initTasks(tasks);
 			}
 
-			if ($$self.$$.dirty[1] & /*timeRanges*/ 536870912 | $$self.$$.dirty[3] & /*mounted*/ 128) {
+			if ($$self.$$.dirty[0] & /*mounted*/ 1024 | $$self.$$.dirty[1] & /*timeRanges*/ 1073741824) {
 				if (mounted) initTimeRanges(timeRanges);
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1) {
+			if ($$self.$$.dirty[2] & /*rowHeight*/ 2) {
 				set_store_value(_rowHeight, $_rowHeight = rowHeight, $_rowHeight);
 			}
 
-			if ($$self.$$.dirty[1] & /*rowPadding*/ 1073741824) {
+			if ($$self.$$.dirty[2] & /*rowPadding*/ 1) {
 				set_store_value(_rowPadding, $_rowPadding = rowPadding, $_rowPadding);
 			}
 
-			if ($$self.$$.dirty[2] & /*from*/ 2) {
+			if ($$self.$$.dirty[2] & /*from*/ 4) {
 				set_store_value(_from, $_from = toDateNum(from), $_from);
 			}
 
-			if ($$self.$$.dirty[2] & /*to*/ 4) {
+			if ($$self.$$.dirty[2] & /*to*/ 8) {
 				set_store_value(_to, $_to = toDateNum(to), $_to);
 			}
 
-			if ($$self.$$.dirty[2] & /*minWidth, fitWidth*/ 24) {
+			if ($$self.$$.dirty[2] & /*minWidth, fitWidth*/ 48) {
 				{
 					set_store_value(_minWidth, $_minWidth = minWidth, $_minWidth);
 					set_store_value(_fitWidth, $_fitWidth = fitWidth, $_fitWidth);
 				}
 			}
 
-			if ($$self.$$.dirty[2] & /*magnetUnit, magnetOffset*/ 3072) {
+			if ($$self.$$.dirty[2] & /*magnetUnit, magnetOffset*/ 6144) {
 				setMagnetDuration(magnetUnit, magnetOffset);
 			}
 
-			if ($$self.$$.dirty[0] & /*columnUnit, $_width*/ 8193 | $$self.$$.dirty[1] & /*columnOffset*/ 8388608 | $$self.$$.dirty[3] & /*$_from, $_to*/ 786432) {
+			if ($$self.$$.dirty[0] & /*columnUnit, $_width*/ 16385 | $$self.$$.dirty[1] & /*columnOffset*/ 16777216 | $$self.$$.dirty[3] & /*$_from, $_to*/ 196608) {
 				{
-					$$invalidate(19, columns = getColumnsV2($_from, $_to, columnUnit, columnOffset));
+					$$invalidate(20, columns = getColumnsV2($_from, $_to, columnUnit, columnOffset));
 					tickWithoutCSSTransition();
 					refreshTimeRanges();
 					refreshTasks();
 				}
 			}
 
-			if ($$self.$$.dirty[3] & /*$_rowPadding, $rowStore*/ 1081344) {
+			if ($$self.$$.dirty[3] & /*$_rowPadding, $rowStore*/ 270336) {
 				{
-					$$invalidate(55, taskFactory.rowPadding = $_rowPadding, taskFactory);
-					$$invalidate(55, taskFactory.rowEntities = $rowStore.entities, taskFactory);
+					$$invalidate(56, taskFactory.rowPadding = $_rowPadding, taskFactory);
+					$$invalidate(56, taskFactory.rowEntities = $rowStore.entities, taskFactory);
 				}
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1) {
-				$$invalidate(56, rowFactory.rowHeight = rowHeight, rowFactory);
+			if ($$self.$$.dirty[2] & /*rowHeight*/ 2) {
+				$$invalidate(57, rowFactory.rowHeight = rowHeight, rowFactory);
 			}
 
-			if ($$self.$$.dirty[0] & /*$_width*/ 8192 | $$self.$$.dirty[2] & /*magnetOffset, magnetUnit, dateAdapter*/ 3584 | $$self.$$.dirty[3] & /*$_from, $_to, magnetDuration*/ 786688) {
+			if ($$self.$$.dirty[0] & /*$_width*/ 16384 | $$self.$$.dirty[2] & /*magnetOffset, magnetUnit, dateAdapter*/ 7168 | $$self.$$.dirty[3] & /*$_from, $_to, magnetDuration*/ 196736) {
 				{
-					$$invalidate(57, utils.from = $_from, utils);
-					$$invalidate(57, utils.to = $_to, utils);
-					$$invalidate(57, utils.width = $_width, utils);
-					$$invalidate(57, utils.magnetOffset = magnetOffset, utils);
-					$$invalidate(57, utils.magnetUnit = magnetUnit, utils);
-					$$invalidate(57, utils.magnetDuration = magnetDuration, utils);
-					$$invalidate(57, utils.dateAdapter = dateAdapter, utils);
+					$$invalidate(58, utils.from = $_from, utils);
+					$$invalidate(58, utils.to = $_to, utils);
+					$$invalidate(58, utils.width = $_width, utils);
+					$$invalidate(58, utils.magnetOffset = magnetOffset, utils);
+					$$invalidate(58, utils.magnetUnit = magnetUnit, utils);
+					$$invalidate(58, utils.magnetDuration = magnetDuration, utils);
+					$$invalidate(58, utils.dateAdapter = dateAdapter, utils);
 				} //utils.to = columns[columns.length - 1].to;
 				//utils.width = columns.length * columns[columns.length - 1].width;
 			}
 
-			if ($$self.$$.dirty[3] & /*$allRows*/ 131072) {
-				$$invalidate(103, filteredRows = $allRows.filter(row => !row.hidden));
+			if ($$self.$$.dirty[3] & /*$allRows*/ 32768) {
+				$$invalidate(101, filteredRows = $allRows.filter(row => !row.hidden));
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1 | $$self.$$.dirty[3] & /*filteredRows*/ 1024) {
-				$$invalidate(10, rowContainerHeight = filteredRows.length * rowHeight);
+			if ($$self.$$.dirty[0] & /*rowContainerHeight, $visibleHeight*/ 10240) {
+				$$invalidate(22, rightScrollbarVisible = rowContainerHeight > $visibleHeight);
 			}
 
-			if ($$self.$$.dirty[0] & /*rowContainerHeight, $visibleHeight*/ 5120) {
-				$$invalidate(21, rightScrollbarVisible = rowContainerHeight > $visibleHeight);
+			if ($$self.$$.dirty[3] & /*filteredRows*/ 256) {
+				$$invalidate(103, endIndex = filteredRows.length - 1);
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1 | $$self.$$.dirty[3] & /*__scrollTop*/ 512) {
-				$$invalidate(104, startIndex = Math.floor(__scrollTop / rowHeight));
+			if ($$self.$$.dirty[2] & /*rowHeight*/ 2 | $$self.$$.dirty[3] & /*startIndex*/ 512) {
+				$$invalidate(23, paddingTop = startIndex * rowHeight);
 			}
 
-			if ($$self.$$.dirty[0] & /*$visibleHeight*/ 4096 | $$self.$$.dirty[2] & /*rowHeight*/ 1 | $$self.$$.dirty[3] & /*startIndex, filteredRows*/ 3072) {
-				$$invalidate(105, endIndex = Math.min(startIndex + Math.ceil($visibleHeight / rowHeight), filteredRows.length - 1));
+			if ($$self.$$.dirty[2] & /*rowHeight*/ 2 | $$self.$$.dirty[3] & /*filteredRows, endIndex*/ 1280) {
+				$$invalidate(24, paddingBottom = (filteredRows.length - endIndex - 1) * rowHeight);
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1 | $$self.$$.dirty[3] & /*startIndex*/ 2048) {
-				$$invalidate(22, paddingTop = startIndex * rowHeight);
+			if ($$self.$$.dirty[3] & /*filteredRows, startIndex, endIndex*/ 1792) {
+				$$invalidate(12, visibleRows = filteredRows.slice(startIndex, endIndex + 1));
 			}
 
-			if ($$self.$$.dirty[2] & /*rowHeight*/ 1 | $$self.$$.dirty[3] & /*filteredRows, endIndex*/ 5120) {
-				$$invalidate(23, paddingBottom = (filteredRows.length - endIndex - 1) * rowHeight);
-			}
-
-			if ($$self.$$.dirty[3] & /*filteredRows, startIndex, endIndex*/ 7168) {
-				$$invalidate(11, visibleRows = filteredRows.slice(startIndex, endIndex + 1));
-			}
-
-			if ($$self.$$.dirty[0] & /*visibleRows*/ 2048 | $$self.$$.dirty[3] & /*$rowTaskCache, $taskStore, $draggingTaskCache*/ 90112) {
+			if ($$self.$$.dirty[0] & /*visibleRows*/ 4096 | $$self.$$.dirty[3] & /*$rowTaskCache, $taskStore, $draggingTaskCache*/ 22528) {
 				{
 					const tasks = [];
 					const rendered = {};
@@ -6460,13 +6525,13 @@
 						}
 					}
 
-					$$invalidate(24, visibleTasks = tasks);
+					$$invalidate(25, visibleTasks = tasks);
 				}
 			}
 
-			if ($$self.$$.dirty[1] & /*rowPadding*/ 1073741824 | $$self.$$.dirty[2] & /*layout, rowHeight*/ 131073 | $$self.$$.dirty[3] & /*$rowStore, $rowTaskCache, $taskStore*/ 57344) {
+			if ($$self.$$.dirty[2] & /*layout, rowHeight, rowPadding*/ 262147 | $$self.$$.dirty[3] & /*$rowStore, $rowTaskCache, $taskStore*/ 14336) {
 				{
-					if (layout$1 === 'pack') {
+					if (layout$2 === 'pack') {
 						for (const rowId of $rowStore.ids) {
 							// const row = $rowStore.entities[rowId];
 							const taskIds = $rowTaskCache[rowId];
@@ -6474,15 +6539,41 @@
 							if (taskIds) {
 								const tasks = taskIds.map(taskId => $taskStore.entities[taskId]);
 
-								layout(tasks, {
+								layout$1(tasks, {
 									rowContentHeight: rowHeight - rowPadding * 2
 								});
 							}
 						}
 					}
+
+					if (layout$2 === 'push') {
+						let y = 0;
+
+						for (const rowId of $rowStore.ids) {
+							const row = $rowStore.entities[rowId];
+							const taskIds = $rowTaskCache[rowId];
+
+							if (taskIds) {
+								const tasks = taskIds.map(taskId => $taskStore.entities[taskId]);
+
+								layout(tasks, {
+									row,
+									rowHeight,
+									rowContentHeight: rowHeight - rowPadding * 2,
+									rowPadding
+								});
+							}
+
+							row.y = y;
+							y += row.height;
+						}
+					}
 				}
 			}
 		};
+
+		$$invalidate(11, rowContainerHeight = filteredRows => filteredRows.reduce((acc, row) => acc + row.height, 0));
+		$$invalidate(102, startIndex = 0);
 
 		return [
 			columnUnit,
@@ -6495,6 +6586,7 @@
 			columnStrokeColor,
 			columnStrokeWidth,
 			disableDragging,
+			mounted,
 			rowContainerHeight,
 			visibleRows,
 			$visibleHeight,
@@ -6564,9 +6656,8 @@
 			highlightedDurations,
 			highlightColor,
 			taskElementHook,
-			layout$1,
+			layout$2,
 			columnService,
-			withoutCSSTransition,
 			scrollTo,
 			api,
 			dndManager,
@@ -6585,9 +6676,7 @@
 			getRow,
 			getTask,
 			getTasks,
-			mounted,
 			magnetDuration,
-			__scrollTop,
 			filteredRows,
 			startIndex,
 			endIndex,
@@ -6619,48 +6708,47 @@
 				create_fragment$5,
 				safe_not_equal,
 				{
-					rows: 58,
-					tasks: 59,
-					timeRanges: 60,
-					rowPadding: 61,
-					rowHeight: 62,
-					from: 63,
-					to: 64,
-					minWidth: 65,
-					fitWidth: 66,
+					rows: 59,
+					tasks: 60,
+					timeRanges: 61,
+					rowPadding: 62,
+					rowHeight: 63,
+					from: 64,
+					to: 65,
+					minWidth: 66,
+					fitWidth: 67,
 					classes: 3,
 					headers: 1,
-					zoomLevels: 67,
-					taskContent: 68,
+					zoomLevels: 68,
+					taskContent: 69,
 					tableWidth: 2,
-					resizeHandleWidth: 69,
-					onTaskButtonClick: 70,
-					dateAdapter: 71,
-					magnetUnit: 72,
-					magnetOffset: 73,
+					resizeHandleWidth: 70,
+					onTaskButtonClick: 71,
+					dateAdapter: 72,
+					magnetUnit: 73,
+					magnetOffset: 74,
 					columnUnit: 0,
-					columnOffset: 54,
+					columnOffset: 55,
 					ganttTableModules: 4,
 					ganttBodyModules: 5,
-					reflectOnParentRows: 74,
-					reflectOnChildRows: 75,
+					reflectOnParentRows: 75,
+					reflectOnChildRows: 76,
 					useCanvasColumns: 6,
 					columnStrokeColor: 7,
 					columnStrokeWidth: 8,
-					highlightedDurations: 76,
-					highlightColor: 77,
-					taskElementHook: 78,
-					layout: 79,
+					highlightedDurations: 77,
+					highlightColor: 78,
+					taskElementHook: 79,
+					layout: 80,
 					disableDragging: 9,
-					columnService: 80,
-					withoutCSSTransition: 81,
+					columnService: 81,
 					scrollTo: 82,
 					api: 83,
-					taskFactory: 55,
-					rowFactory: 56,
+					taskFactory: 56,
+					rowFactory: 57,
 					dndManager: 84,
 					timeRangeFactory: 85,
-					utils: 57,
+					utils: 58,
 					refreshTimeRanges: 86,
 					refreshTasks: 87,
 					getRowContainer: 88,
@@ -6682,10 +6770,6 @@
 		}
 
 		get columnService() {
-			return this.$$.ctx[80];
-		}
-
-		get withoutCSSTransition() {
 			return this.$$.ctx[81];
 		}
 
@@ -6698,11 +6782,11 @@
 		}
 
 		get taskFactory() {
-			return this.$$.ctx[55];
+			return this.$$.ctx[56];
 		}
 
 		get rowFactory() {
-			return this.$$.ctx[56];
+			return this.$$.ctx[57];
 		}
 
 		get dndManager() {
@@ -6714,7 +6798,7 @@
 		}
 
 		get utils() {
-			return this.$$.ctx[57];
+			return this.$$.ctx[58];
 		}
 
 		get refreshTimeRanges() {
@@ -7542,7 +7626,7 @@
 				}
 
 				attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[1].model.id);
-				set_style(div, "height", /*$rowHeight*/ ctx[2] + "px");
+				set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
 				attr(div, "class", div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-oze9vk");
 				toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].expanded);
 				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[3] == /*row*/ ctx[1].model.id);
@@ -7591,8 +7675,8 @@
 					attr(div, "data-row-id", div_data_row_id_value);
 				}
 
-				if (!current || dirty & /*$rowHeight*/ 4) {
-					set_style(div, "height", /*$rowHeight*/ ctx[2] + "px");
+				if (!current || dirty & /*row, $rowHeight*/ 6) {
+					set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
 				}
 
 				if (!current || dirty & /*row*/ 2 && div_class_value !== (div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-oze9vk")) {
@@ -7707,20 +7791,20 @@
 
 	function get_each_context$1(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[32] = list[i];
+		child_ctx[31] = list[i];
 		return child_ctx;
 	}
 
 	function get_each_context_1(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[35] = list[i];
+		child_ctx[34] = list[i];
 		return child_ctx;
 	}
 
 	// (98:8) {#each tableHeaders as header}
 	function create_each_block_1(ctx) {
 		let div;
-		let t0_value = /*header*/ ctx[35].title + "";
+		let t0_value = /*header*/ ctx[34].title + "";
 		let t0;
 		let t1;
 
@@ -7730,7 +7814,7 @@
 				t0 = text(t0_value);
 				t1 = space();
 				attr(div, "class", "sg-table-header-cell sg-table-cell svelte-afbyi7");
-				set_style(div, "width", /*header*/ ctx[35].width + "px");
+				set_style(div, "width", /*header*/ ctx[34].width + "px");
 			},
 			m(target, anchor) {
 				insert(target, div, anchor);
@@ -7738,10 +7822,10 @@
 				append(div, t1);
 			},
 			p(ctx, dirty) {
-				if (dirty[0] & /*tableHeaders*/ 32 && t0_value !== (t0_value = /*header*/ ctx[35].title + "")) set_data(t0, t0_value);
+				if (dirty[0] & /*tableHeaders*/ 32 && t0_value !== (t0_value = /*header*/ ctx[34].title + "")) set_data(t0, t0_value);
 
 				if (dirty[0] & /*tableHeaders*/ 32) {
-					set_style(div, "width", /*header*/ ctx[35].width + "px");
+					set_style(div, "width", /*header*/ ctx[34].width + "px");
 				}
 			},
 			d(detaching) {
@@ -7759,13 +7843,13 @@
 
 		tablerow = new TableRow({
 				props: {
-					row: /*row*/ ctx[32],
+					row: /*row*/ ctx[31],
 					headers: /*tableHeaders*/ ctx[5]
 				}
 			});
 
-		tablerow.$on("rowExpanded", /*onRowExpanded*/ ctx[17]);
-		tablerow.$on("rowCollapsed", /*onRowCollapsed*/ ctx[18]);
+		tablerow.$on("rowExpanded", /*onRowExpanded*/ ctx[16]);
+		tablerow.$on("rowCollapsed", /*onRowCollapsed*/ ctx[17]);
 
 		return {
 			c() {
@@ -7777,7 +7861,7 @@
 			},
 			p(ctx, dirty) {
 				const tablerow_changes = {};
-				if (dirty[0] & /*visibleRows*/ 16) tablerow_changes.row = /*row*/ ctx[32];
+				if (dirty[0] & /*visibleRows*/ 16) tablerow_changes.row = /*row*/ ctx[31];
 				if (dirty[0] & /*tableHeaders*/ 32) tablerow_changes.headers = /*tableHeaders*/ ctx[5];
 				tablerow.$set(tablerow_changes);
 			},
@@ -7864,7 +7948,7 @@
 					}
 				}
 
-				/*div0_binding*/ ctx[22](div0);
+				/*div0_binding*/ ctx[21](div0);
 				append(div4, t);
 				append(div4, div3);
 				append(div3, div2);
@@ -7879,7 +7963,7 @@
 				current = true;
 
 				if (!mounted) {
-					dispose = action_destroyer(/*scrollListener*/ ctx[16].call(null, div2));
+					dispose = action_destroyer(/*scrollListener*/ ctx[15].call(null, div2));
 					mounted = true;
 				}
 			},
@@ -7911,7 +7995,7 @@
 					set_style(div0, "height", /*$headerHeight*/ ctx[8] + "px");
 				}
 
-				if (dirty[0] & /*visibleRows, tableHeaders, onRowExpanded, onRowCollapsed*/ 393264) {
+				if (dirty[0] & /*visibleRows, tableHeaders, onRowExpanded, onRowCollapsed*/ 196656) {
 					each_value = ensure_array_like(/*visibleRows*/ ctx[4]);
 					let i;
 
@@ -7982,7 +8066,7 @@
 				}
 
 				destroy_each(each_blocks_1, detaching);
-				/*div0_binding*/ ctx[22](null);
+				/*div0_binding*/ ctx[21](null);
 				destroy_each(each_blocks, detaching);
 				mounted = false;
 				dispose();
@@ -8010,7 +8094,6 @@
 		let $rowPadding;
 		let $taskStore;
 		let $rowStore;
-		let $rowHeight;
 		let $headerHeight;
 		const dispatch = createEventDispatcher();
 		let { tableWidth } = $$props;
@@ -8028,15 +8111,14 @@
 		] } = $$props;
 
 		const { from, to, width, visibleWidth, headerHeight } = getContext('dimensions');
-		component_subscribe($$self, width, value => $$invalidate(21, $width = value));
-		component_subscribe($$self, visibleWidth, value => $$invalidate(20, $visibleWidth = value));
+		component_subscribe($$self, width, value => $$invalidate(20, $width = value));
+		component_subscribe($$self, visibleWidth, value => $$invalidate(19, $visibleWidth = value));
 		component_subscribe($$self, headerHeight, value => $$invalidate(8, $headerHeight = value));
 		const { rowPadding, rowHeight } = getContext('options');
-		component_subscribe($$self, rowPadding, value => $$invalidate(23, $rowPadding = value));
-		component_subscribe($$self, rowHeight, value => $$invalidate(26, $rowHeight = value));
+		component_subscribe($$self, rowPadding, value => $$invalidate(22, $rowPadding = value));
 		const { rowStore, taskStore } = getContext('dataStore');
-		component_subscribe($$self, rowStore, value => $$invalidate(25, $rowStore = value));
-		component_subscribe($$self, taskStore, value => $$invalidate(24, $taskStore = value));
+		component_subscribe($$self, rowStore, value => $$invalidate(24, $rowStore = value));
+		component_subscribe($$self, taskStore, value => $$invalidate(23, $taskStore = value));
 		const { scrollables } = getContext('gantt');
 
 		onMount(() => {
@@ -8085,7 +8167,7 @@
 
 				if (!row.hidden) {
 					set_store_value(rowStore, $rowStore.entities[id].y = y, $rowStore);
-					y += $rowHeight;
+					y += row.height;
 				}
 			});
 
@@ -8124,11 +8206,11 @@
 						sum += header.width;
 					});
 
-					$$invalidate(19, scrollWidth = sum);
+					$$invalidate(18, scrollWidth = sum);
 				}
 			}
 
-			if ($$self.$$.dirty[0] & /*$width, $visibleWidth, scrollWidth, tableWidth*/ 3670017) {
+			if ($$self.$$.dirty[0] & /*$width, $visibleWidth, scrollWidth, tableWidth*/ 1835009) {
 				{
 					$$invalidate(7, bottomScrollbarVisible = $width > $visibleWidth && scrollWidth <= tableWidth);
 				}
@@ -8149,7 +8231,6 @@
 			visibleWidth,
 			headerHeight,
 			rowPadding,
-			rowHeight,
 			rowStore,
 			taskStore,
 			scrollListener,

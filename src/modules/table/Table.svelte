@@ -78,7 +78,7 @@
             const row = $rowStore.entities[id];
             if (!row.hidden) {
                 $rowStore.entities[id].y = y;
-                y += $rowHeight;
+                y += row.height;
             }
         });
 

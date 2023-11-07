@@ -168,7 +168,6 @@ export interface SvelteGanttComponent extends Component<SvelteGanttOptions> {
     unselectTasks(): any;
     scrollToTask(id: number, scrollBehavior?: string): any;
     scrollToRow(id: number, scrollBehavior?: string): any;
-    withoutCSSTransition(callback: () => void | Promise<void>): any;
     scrollTo(options: ScrollToOptions): any;
     updateTask(model: TaskModel): any;
     updateTasks(models: TaskModel[]): any;

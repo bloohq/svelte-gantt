@@ -25,7 +25,7 @@
 
 <div
     data-row-id={row.model.id}
-    style="height:{$rowHeight}px"
+    style="height:{row.height ?? $rowHeight}px"
     class="sg-table-row {row.model.classes || ''}"
     class:sg-row-expanded={row.expanded}
     class:sg-hover={$hoveredRow == row.model.id}

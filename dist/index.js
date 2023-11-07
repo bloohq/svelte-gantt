@@ -4651,17 +4651,11 @@ function layout(tasks, params) {
         }
     }
     const maxSlot = tasks.reduce((m, t) => Math.max(m, _getMaxIntersectsWithLength(t)), 0);
-    console.log({
-        maxSlot,
-        tasks,
-        rowY: row.y
-    });
     row.height = maxSlot * rowHeight;
     for (const task of tasks) {
         task.numYSlots = _getMaxIntersectsWithLength(task);
         for (let i = 0; i < task.numYSlots; i++) {
             if (!task.intersectsWith.some(intersect => intersect.yPos === i)) {
-                console.log(`task ${task.model.label} has ${task.numYSlots} slots, and is placed in slot ${i}`);
                 task.yPos = i;
                 task.height = rowContentHeight;
                 task.topDelta = task.height * task.yPos + rowPadding * i;
@@ -4741,7 +4735,7 @@ function get_each_context_5(ctx, list, i) {
 	return child_ctx;
 }
 
-// (640:4) {#each ganttTableModules as module}
+// (642:4) {#each ganttTableModules as module}
 function create_each_block_5(ctx) {
 	let switch_instance;
 	let t;
@@ -4879,7 +4873,7 @@ function create_each_block_5(ctx) {
 	};
 }
 
-// (671:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+// (673:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 function create_each_block_4(key_1, ctx) {
 	let first;
 	let timerangeheader;
@@ -4934,7 +4928,7 @@ function create_each_block_4(key_1, ctx) {
 	};
 }
 
-// (696:24) {#each visibleRows as row (row.model.id)}
+// (698:24) {#each visibleRows as row (row.model.id)}
 function create_each_block_3(key_1, ctx) {
 	let first;
 	let row_1;
@@ -4979,7 +4973,7 @@ function create_each_block_3(key_1, ctx) {
 	};
 }
 
-// (703:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+// (705:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 function create_each_block_2(key_1, ctx) {
 	let first;
 	let timerange;
@@ -5034,7 +5028,7 @@ function create_each_block_2(key_1, ctx) {
 	};
 }
 
-// (707:20) {#each visibleTasks as task (task.model.id)}
+// (709:20) {#each visibleTasks as task (task.model.id)}
 function create_each_block_1$1(key_1, ctx) {
 	let first;
 	let task_1;
@@ -5111,7 +5105,7 @@ function create_each_block_1$1(key_1, ctx) {
 	};
 }
 
-// (719:16) {#each ganttBodyModules as module}
+// (721:16) {#each ganttBodyModules as module}
 function create_each_block$3(ctx) {
 	let switch_instance;
 	let switch_instance_anchor;
@@ -6517,6 +6511,7 @@ function instance$5($$self, $$props, $$invalidate) {
 				// render all tasks being dragged if not already
 				for (const id in $draggingTaskCache) {
 					if (!rendered[id]) {
+						if (!$taskStore.entities[id]) continue;
 						tasks.push($taskStore.entities[id]);
 						rendered[id] = true;
 					}

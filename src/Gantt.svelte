@@ -714,6 +714,7 @@
         // render all tasks being dragged if not already
         for (const id in $draggingTaskCache) {
             if (!rendered[id]) {
+                if (!$taskStore.entities[id]) continue;
                 tasks.push($taskStore.entities[id]);
                 rendered[id] = true;
             }

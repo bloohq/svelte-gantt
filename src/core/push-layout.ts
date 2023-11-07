@@ -46,21 +46,11 @@ export function layout(
     }
 
     const maxSlot = tasks.reduce((m, t) => Math.max(m, _getMaxIntersectsWithLength(t)), 0);
-    console.log({
-        maxSlot,
-        tasks,
-        rowY: row.y
-    });
-
     row.height = maxSlot * rowHeight;
     for (const task of tasks) {
         task.numYSlots = _getMaxIntersectsWithLength(task);
         for (let i = 0; i < task.numYSlots!; i++) {
             if (!task.intersectsWith!.some(intersect => intersect.yPos === i)) {
-                console.log(
-                    `task ${task.model.label} has ${task.numYSlots} slots, and is placed in slot ${i}`
-                );
-
                 task.yPos = i;
                 task.height = rowContentHeight;
                 task.topDelta = task.height * task.yPos + rowPadding * i;

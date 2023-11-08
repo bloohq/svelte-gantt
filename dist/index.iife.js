@@ -8412,9 +8412,9 @@
 					$$invalidate(3, isFromRowHidden = $rowStore.entities[fromTask.model.resourceId]?.hidden);
 					$$invalidate(12, toTask = $taskStore.entities[toId]);
 					$$invalidate(4, isToRowHidden = $rowStore.entities[toTask.model.resourceId]?.hidden);
-					let startY = fromTask.top + fromTask.height / 2;
+					let startY = fromTask.top + fromTask.topDelta + fromTask.height / 2;
 					let startX = fromTask.left + fromTask.width;
-					let endY = toTask.top + toTask.height / 2;
+					let endY = toTask.top + toTask.topDelta + toTask.height / 2;
 					let endX = toTask.left;
 					let width = endX - startX;
 					let height = endY - startY;
@@ -8430,9 +8430,9 @@
 
 						$$invalidate(6, path += `m -2 -2 a 2 2 0 1 1 0 4 a 2 2 0 1 1 0 -4`);
 
-						$$invalidate(5, arrowPath = `M${toTask.left - ARROW_SIZE}  ${toTask.top + toTask.height / 2 - ARROW_SIZE} 
-                            L${toTask.left} ${toTask.top + toTask.height / 2} 
-                            L${toTask.left - ARROW_SIZE} ${toTask.top + toTask.height / 2 + ARROW_SIZE} Z`);
+						$$invalidate(5, arrowPath = `M${toTask.left - ARROW_SIZE}  ${toTask.top + toTask.topDelta + toTask.height / 2 - ARROW_SIZE} 
+                            L${toTask.left} ${toTask.top + toTask.topDelta + toTask.height / 2} 
+                            L${toTask.left - ARROW_SIZE} ${toTask.top + toTask.topDelta + toTask.height / 2 + ARROW_SIZE} Z`);
 					} else if (isToRowHidden) {
 						$$invalidate(6, path = `M${startX} ${startY}`);
 
@@ -8459,9 +8459,9 @@
                             L ${endX - 2} ${endY}`);
 						}
 
-						$$invalidate(5, arrowPath = `M${toTask.left - ARROW_SIZE} ${toTask.top + toTask.height / 2 - ARROW_SIZE} 
-                            L${toTask.left} ${toTask.top + toTask.height / 2} 
-                            L${toTask.left - ARROW_SIZE} ${toTask.top + toTask.height / 2 + ARROW_SIZE} Z`);
+						$$invalidate(5, arrowPath = `M${toTask.left - ARROW_SIZE} ${toTask.top + toTask.topDelta + toTask.height / 2 - ARROW_SIZE} 
+                            L${toTask.left} ${toTask.top + toTask.topDelta + toTask.height / 2} 
+                            L${toTask.left - ARROW_SIZE} ${toTask.top + toTask.topDelta + toTask.height / 2 + ARROW_SIZE} Z`);
 					}
 				}
 			}

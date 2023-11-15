@@ -726,7 +726,7 @@
     $: {
         if (layout === 'pack') {
             for (const rowId of $rowStore.ids) {
-                // const row = $rowStore.entities[rowId];
+                const row = $rowStore.entities[rowId];
                 const taskIds = $rowTaskCache[rowId];
                 if (taskIds) {
                     const tasks = taskIds.map(taskId => $taskStore.entities[taskId]);
@@ -747,13 +747,14 @@
                     pushLayout.layout(tasks, {
                         row,
                         rowHeight,
+                        y,
                         rowContentHeight: rowHeight - rowPadding * 2,
                         rowPadding
                     });
                 }
-                row.y = y;
                 y += row.height;
             }
+            setTimeout(() => rowStore.refresh(), 1000);
         }
     }
 </script>

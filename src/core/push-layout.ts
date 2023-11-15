@@ -13,8 +13,9 @@ import { SvelteTask } from './task';
 export function layout(
     tasks: SvelteTask[],
     params: {
-        row: SvelteRow;
-        rowHeight: number;
+        row;
+        rowHeight;
+        y;
         rowPadding: number;
         rowContentHeight: number;
     }
@@ -23,7 +24,7 @@ export function layout(
         return;
     }
 
-    const { row, rowHeight, rowContentHeight, rowPadding } = params;
+    const { row, rowHeight, y, rowContentHeight, rowPadding } = params;
 
     if (tasks.length === 1) {
         const task = tasks[0];
@@ -35,18 +36,12 @@ export function layout(
 
     tasks.sort(_byStartThenByLongestSortFn);
 
-    for (const left of tasks) {
-        left.yPos = 0; // reset y positions
-        left.intersectsWith = [];
-        for (const right of tasks) {
-            if (left !== right && _intersects(left, right)) {
-                left.intersectsWith.push(right);
-            }
-        }
-    }
+    updateIntersects(tasks);
 
-    const maxSlot = tasks.reduce((m, t) => Math.max(m, _getMaxIntersectsWithLength(t)), 0);
-    row.height = maxSlot * rowHeight;
+    const maxYSlot = tasks.reduce((max, crr) => Math.max(max, crr.intersectsWith.length), 0);
+    row.height = rowHeight * (maxYSlot + 1);
+    row.y = y;
+
     for (const task of tasks) {
         task.numYSlots = _getMaxIntersectsWithLength(task);
         for (let i = 0; i < task.numYSlots!; i++) {
@@ -55,6 +50,18 @@ export function layout(
                 task.height = rowContentHeight;
                 task.topDelta = task.height * task.yPos + rowPadding * i;
                 break;
+            }
+        }
+    }
+}
+
+export function updateIntersects(tasks) {
+    for (const left of tasks) {
+        left.yPos = 0; // reset y positions
+        left.intersectsWith = [];
+        for (const right of tasks) {
+            if (left !== right && _intersects(left, right)) {
+                left.intersectsWith.push(right);
             }
         }
     }

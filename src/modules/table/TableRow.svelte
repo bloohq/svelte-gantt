@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher, getContext, onMount } from 'svelte';
+    import { createEventDispatcher, getContext, onMount, tick } from 'svelte';
 
     import TableTreeCell from './TableTreeCell.svelte';
     import type { TableHeader } from './tableHeader';
@@ -25,7 +25,7 @@
 
 <div
     data-row-id={row.model.id}
-    style="height:{row.height ?? $rowHeight}px"
+    style="height:{row.height}px"
     class="sg-table-row {row.model.classes || ''}"
     class:sg-row-expanded={row.expanded}
     class:sg-hover={$hoveredRow == row.model.id}

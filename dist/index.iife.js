@@ -3342,7 +3342,7 @@
 		return child_ctx;
 	}
 
-	// (40:4) {#each header.columns as _header}
+	// (32:4) {#each header.columns as _header}
 	function create_each_block$6(ctx) {
 		let div1;
 		let div0;
@@ -3503,39 +3503,28 @@
 		};
 
 		$$self.$$.update = () => {
-			if ($$self.$$.dirty & /*header, ganttBodyUnit, ganttBodyColumns, $from, $to, $width*/ 993) {
+			if ($$self.$$.dirty & /*$from, $to, header, $width*/ 897) {
 				{
-					if (header.unit === ganttBodyUnit) {
-						$$invalidate(
-							0,
-							header.columns = ganttBodyColumns.map(column => ({
-								...column,
-								label: dateAdapter.format(column.from, header.format)
-							})),
-							header
-						);
-					} else {
-						const periods = getAllPeriods($from.valueOf(), $to.valueOf(), header.unit);
-						let distance_point = 0;
-						let left = 0;
+					const periods = getAllPeriods($from.valueOf(), $to.valueOf(), header.unit, header.offset);
+					let distance_point = 0;
+					let left = 0;
 
-						$$invalidate(
-							0,
-							header.columns = periods.map(period => {
-								left = distance_point;
-								distance_point = getPositionByDate(period.to, $from.valueOf(), $to.valueOf(), $width);
+					$$invalidate(
+						0,
+						header.columns = periods.map(period => {
+							left = distance_point;
+							distance_point = getPositionByDate(period.to, $from.valueOf(), $to.valueOf(), $width);
 
-								return {
-									width: Math.min(distance_point - left, $width),
-									label: dateAdapter.format(period.from, header.format),
-									from: period.from,
-									to: period.to,
-									left
-								};
-							}),
-							header
-						);
-					}
+							return {
+								width: Math.min(distance_point - left, $width),
+								label: dateAdapter.format(period.from, header.format),
+								from: period.from,
+								to: period.to,
+								left
+							};
+						}),
+						header
+					);
 				}
 			}
 		};
@@ -4635,7 +4624,7 @@
 	    if (!tasks.length) {
 	        return;
 	    }
-	    const { row, rowHeight, rowContentHeight, rowPadding } = params;
+	    const { row, rowHeight, y, rowContentHeight, rowPadding } = params;
 	    if (tasks.length === 1) {
 	        const task = tasks[0];
 	        task.yPos = 0;
@@ -4644,17 +4633,10 @@
 	        task.topDelta = task.yPos * task.height; // + rowPadding which is added by taskfactory;
 	    }
 	    tasks.sort(_byStartThenByLongestSortFn);
-	    for (const left of tasks) {
-	        left.yPos = 0; // reset y positions
-	        left.intersectsWith = [];
-	        for (const right of tasks) {
-	            if (left !== right && _intersects(left, right)) {
-	                left.intersectsWith.push(right);
-	            }
-	        }
-	    }
-	    const maxSlot = tasks.reduce((m, t) => Math.max(m, _getMaxIntersectsWithLength(t)), 0);
-	    row.height = maxSlot * rowHeight;
+	    updateIntersects(tasks);
+	    const maxYSlot = tasks.reduce((max, crr) => Math.max(max, crr.intersectsWith.length), 0);
+	    row.height = rowHeight * (maxYSlot + 1);
+	    row.y = y;
 	    for (const task of tasks) {
 	        task.numYSlots = _getMaxIntersectsWithLength(task);
 	        for (let i = 0; i < task.numYSlots; i++) {
@@ -4663,6 +4645,17 @@
 	                task.height = rowContentHeight;
 	                task.topDelta = task.height * task.yPos + rowPadding * i;
 	                break;
+	            }
+	        }
+	    }
+	}
+	function updateIntersects(tasks) {
+	    for (const left of tasks) {
+	        left.yPos = 0; // reset y positions
+	        left.intersectsWith = [];
+	        for (const right of tasks) {
+	            if (left !== right && _intersects(left, right)) {
+	                left.intersectsWith.push(right);
 	            }
 	        }
 	    }
@@ -4738,7 +4731,7 @@
 		return child_ctx;
 	}
 
-	// (642:4) {#each ganttTableModules as module}
+	// (643:4) {#each ganttTableModules as module}
 	function create_each_block_5(ctx) {
 		let switch_instance;
 		let t;
@@ -4876,7 +4869,7 @@
 		};
 	}
 
-	// (673:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+	// (674:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 	function create_each_block_4(key_1, ctx) {
 		let first;
 		let timerangeheader;
@@ -4931,7 +4924,7 @@
 		};
 	}
 
-	// (698:24) {#each visibleRows as row (row.model.id)}
+	// (699:24) {#each visibleRows as row (row.model.id)}
 	function create_each_block_3(key_1, ctx) {
 		let first;
 		let row_1;
@@ -4976,7 +4969,7 @@
 		};
 	}
 
-	// (705:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
+	// (706:20) {#each $allTimeRanges as timeRange (timeRange.model.id)}
 	function create_each_block_2(key_1, ctx) {
 		let first;
 		let timerange;
@@ -5031,7 +5024,7 @@
 		};
 	}
 
-	// (709:20) {#each visibleTasks as task (task.model.id)}
+	// (710:20) {#each visibleTasks as task (task.model.id)}
 	function create_each_block_1$1(key_1, ctx) {
 		let first;
 		let task_1;
@@ -5108,7 +5101,7 @@
 		};
 	}
 
-	// (721:16) {#each ganttBodyModules as module}
+	// (722:16) {#each ganttBodyModules as module}
 	function create_each_block$3(ctx) {
 		let switch_instance;
 		let switch_instance_anchor;
@@ -6528,7 +6521,7 @@
 				{
 					if (layout$2 === 'pack') {
 						for (const rowId of $rowStore.ids) {
-							// const row = $rowStore.entities[rowId];
+							$rowStore.entities[rowId];
 							const taskIds = $rowTaskCache[rowId];
 
 							if (taskIds) {
@@ -6554,14 +6547,16 @@
 								layout(tasks, {
 									row,
 									rowHeight,
+									y,
 									rowContentHeight: rowHeight - rowPadding * 2,
 									rowPadding
 								});
 							}
 
-							row.y = y;
 							y += row.height;
 						}
+
+						setTimeout(() => rowStore.refresh(), 1000);
 					}
 				}
 			}
@@ -7065,7 +7060,7 @@
 
 	function get_each_context$2(ctx, list, i) {
 		const child_ctx = ctx.slice();
-		child_ctx[12] = list[i];
+		child_ctx[11] = list[i];
 		return child_ctx;
 	}
 
@@ -7077,8 +7072,8 @@
 
 		function select_block_type_2(ctx, dirty) {
 			if (/*row*/ ctx[1].model.headerHtml) return create_if_block_4;
-			if (/*header*/ ctx[12].renderer) return create_if_block_5;
-			if (/*header*/ ctx[12].type === 'resourceInfo') return create_if_block_6;
+			if (/*header*/ ctx[11].renderer) return create_if_block_5;
+			if (/*header*/ ctx[11].type === 'resourceInfo') return create_if_block_6;
 			return create_else_block_2;
 		}
 
@@ -7151,8 +7146,8 @@
 				}
 			});
 
-		tabletreecell.$on("rowCollapsed", /*rowCollapsed_handler*/ ctx[8]);
-		tabletreecell.$on("rowExpanded", /*rowExpanded_handler*/ ctx[9]);
+		tabletreecell.$on("rowCollapsed", /*rowCollapsed_handler*/ ctx[6]);
+		tabletreecell.$on("rowExpanded", /*rowExpanded_handler*/ ctx[7]);
 
 		return {
 			c() {
@@ -7166,7 +7161,7 @@
 				const tabletreecell_changes = {};
 				if (dirty & /*row*/ 2) tabletreecell_changes.row = /*row*/ ctx[1];
 
-				if (dirty & /*$$scope, row, headers*/ 32771) {
+				if (dirty & /*$$scope, row, headers*/ 16387) {
 					tabletreecell_changes.$$scope = { dirty, ctx };
 				}
 
@@ -7219,7 +7214,7 @@
 
 	// (60:16) {:else}
 	function create_else_block_2(ctx) {
-		let t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
+		let t_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "";
 		let t;
 
 		return {
@@ -7230,7 +7225,7 @@
 				insert(target, t, anchor);
 			},
 			p(ctx, dirty) {
-				if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t, t_value);
+				if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "")) set_data(t, t_value);
 			},
 			d(detaching) {
 				if (detaching) {
@@ -7246,7 +7241,7 @@
 		let img_src_value;
 		let t0;
 		let div;
-		let t1_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
+		let t1_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "";
 		let t1;
 
 		return {
@@ -7271,7 +7266,7 @@
 					attr(img, "src", img_src_value);
 				}
 
-				if (dirty & /*row, headers*/ 3 && t1_value !== (t1_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t1, t1_value);
+				if (dirty & /*row, headers*/ 3 && t1_value !== (t1_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "")) set_data(t1, t1_value);
 			},
 			d(detaching) {
 				if (detaching) {
@@ -7286,7 +7281,7 @@
 	// (53:42) 
 	function create_if_block_5(ctx) {
 		let html_tag;
-		let raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "";
+		let raw_value = /*header*/ ctx[11].renderer(/*row*/ ctx[1]) + "";
 		let html_anchor;
 
 		return {
@@ -7300,7 +7295,7 @@
 				insert(target, html_anchor, anchor);
 			},
 			p(ctx, dirty) {
-				if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
+				if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[11].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
 			},
 			d(detaching) {
 				if (detaching) {
@@ -7371,7 +7366,7 @@
 
 	// (40:20) {:else}
 	function create_else_block(ctx) {
-		let t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "";
+		let t_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "";
 		let t;
 
 		return {
@@ -7382,7 +7377,7 @@
 				insert(target, t, anchor);
 			},
 			p(ctx, dirty) {
-				if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[12].property] + "")) set_data(t, t_value);
+				if (dirty & /*row, headers*/ 3 && t_value !== (t_value = /*row*/ ctx[1].model[/*header*/ ctx[11].property] + "")) set_data(t, t_value);
 			},
 			d(detaching) {
 				if (detaching) {
@@ -7395,7 +7390,7 @@
 	// (38:46) 
 	function create_if_block_2(ctx) {
 		let html_tag;
-		let raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "";
+		let raw_value = /*header*/ ctx[11].renderer(/*row*/ ctx[1]) + "";
 		let html_anchor;
 
 		return {
@@ -7409,7 +7404,7 @@
 				insert(target, html_anchor, anchor);
 			},
 			p(ctx, dirty) {
-				if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[12].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
+				if (dirty & /*headers, row*/ 3 && raw_value !== (raw_value = /*header*/ ctx[11].renderer(/*row*/ ctx[1]) + "")) html_tag.p(raw_value);
 			},
 			d(detaching) {
 				if (detaching) {
@@ -7456,7 +7451,7 @@
 
 		function select_block_type_1(ctx, dirty) {
 			if (/*row*/ ctx[1].model.headerHtml) return create_if_block_1;
-			if (/*header*/ ctx[12].renderer) return create_if_block_2;
+			if (/*header*/ ctx[11].renderer) return create_if_block_2;
 			return create_else_block;
 		}
 
@@ -7525,7 +7520,7 @@
 		const if_blocks = [];
 
 		function select_block_type(ctx, dirty) {
-			if (/*header*/ ctx[12].type == 'tree') return 0;
+			if (/*header*/ ctx[11].type == 'tree') return 0;
 			return 1;
 		}
 
@@ -7538,7 +7533,7 @@
 				if_block.c();
 				t = space();
 				attr(div, "class", "sg-table-body-cell sg-table-cell svelte-oze9vk");
-				set_style(div, "width", /*header*/ ctx[12].width + "px");
+				set_style(div, "width", /*header*/ ctx[11].width + "px");
 			},
 			m(target, anchor) {
 				insert(target, div, anchor);
@@ -7574,7 +7569,7 @@
 				}
 
 				if (!current || dirty & /*headers*/ 1) {
-					set_style(div, "width", /*header*/ ctx[12].width + "px");
+					set_style(div, "width", /*header*/ ctx[11].width + "px");
 				}
 			},
 			i(local) {
@@ -7621,11 +7616,11 @@
 				}
 
 				attr(div, "data-row-id", div_data_row_id_value = /*row*/ ctx[1].model.id);
-				set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
+				set_style(div, "height", /*row*/ ctx[1].height + "px");
 				attr(div, "class", div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-oze9vk");
 				toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].expanded);
-				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[3] == /*row*/ ctx[1].model.id);
-				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
+				toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[2] == /*row*/ ctx[1].model.id);
+				toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[3] == /*row*/ ctx[1].model.id);
 			},
 			m(target, anchor) {
 				insert(target, div, anchor);
@@ -7670,8 +7665,8 @@
 					attr(div, "data-row-id", div_data_row_id_value);
 				}
 
-				if (!current || dirty & /*row, $rowHeight*/ 6) {
-					set_style(div, "height", (/*row*/ ctx[1].height ?? /*$rowHeight*/ ctx[2]) + "px");
+				if (!current || dirty & /*row*/ 2) {
+					set_style(div, "height", /*row*/ ctx[1].height + "px");
 				}
 
 				if (!current || dirty & /*row*/ 2 && div_class_value !== (div_class_value = "sg-table-row " + (/*row*/ ctx[1].model.classes || '') + " svelte-oze9vk")) {
@@ -7682,12 +7677,12 @@
 					toggle_class(div, "sg-row-expanded", /*row*/ ctx[1].expanded);
 				}
 
-				if (!current || dirty & /*row, $hoveredRow, row*/ 10) {
-					toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[3] == /*row*/ ctx[1].model.id);
+				if (!current || dirty & /*row, $hoveredRow, row*/ 6) {
+					toggle_class(div, "sg-hover", /*$hoveredRow*/ ctx[2] == /*row*/ ctx[1].model.id);
 				}
 
-				if (!current || dirty & /*row, $selectedRow, row*/ 18) {
-					toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[4] == /*row*/ ctx[1].model.id);
+				if (!current || dirty & /*row, $selectedRow, row*/ 10) {
+					toggle_class(div, "sg-selected", /*$selectedRow*/ ctx[3] == /*row*/ ctx[1].model.id);
 				}
 			},
 			i(local) {
@@ -7719,16 +7714,14 @@
 	}
 
 	function instance$3($$self, $$props, $$invalidate) {
-		let $rowHeight;
 		let $hoveredRow;
 		let $selectedRow;
 		let { headers = null } = $$props;
 		let { row = null } = $$props;
-		const { rowHeight } = getContext('options');
-		component_subscribe($$self, rowHeight, value => $$invalidate(2, $rowHeight = value));
+		getContext('options');
 		const { hoveredRow, selectedRow } = getContext('gantt');
-		component_subscribe($$self, hoveredRow, value => $$invalidate(3, $hoveredRow = value));
-		component_subscribe($$self, selectedRow, value => $$invalidate(4, $selectedRow = value));
+		component_subscribe($$self, hoveredRow, value => $$invalidate(2, $hoveredRow = value));
+		component_subscribe($$self, selectedRow, value => $$invalidate(3, $selectedRow = value));
 		const dispatch = createEventDispatcher();
 
 		onMount(() => {
@@ -7761,10 +7754,8 @@
 		return [
 			headers,
 			row,
-			$rowHeight,
 			$hoveredRow,
 			$selectedRow,
-			rowHeight,
 			hoveredRow,
 			selectedRow,
 			rowCollapsed_handler,

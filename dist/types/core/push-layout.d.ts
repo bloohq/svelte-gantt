@@ -1,4 +1,3 @@
-import { SvelteRow } from './row';
 import { SvelteTask } from './task';
 /**
  * Layouts tasks in a 'push' layout:
@@ -10,8 +9,10 @@ import { SvelteTask } from './task';
  * TODO:: tests, optimization: update only rows that have changes, update only overlapping tasks
  */
 export declare function layout(tasks: SvelteTask[], params: {
-    row: SvelteRow;
-    rowHeight: number;
+    row: any;
+    rowHeight: any;
+    y: any;
     rowPadding: number;
     rowContentHeight: number;
 }): void;
+export declare function updateIntersects(tasks: any): void;

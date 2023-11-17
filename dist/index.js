@@ -1695,7 +1695,7 @@ function create_if_block_5$1(ctx) {
 	};
 }
 
-// (245:4) {#if model.amountDone}
+// (246:4) {#if model.amountDone}
 function create_if_block_4$1(ctx) {
 	let div;
 
@@ -1721,7 +1721,7 @@ function create_if_block_4$1(ctx) {
 	};
 }
 
-// (253:8) {:else}
+// (254:8) {:else}
 function create_else_block$3(ctx) {
 	let t_value = /*model*/ ctx[0].label + "";
 	let t;
@@ -1744,7 +1744,7 @@ function create_else_block$3(ctx) {
 	};
 }
 
-// (251:30) 
+// (252:30) 
 function create_if_block_3$1(ctx) {
 	let html_tag;
 	let raw_value = /*taskContent*/ ctx[12](/*model*/ ctx[0]) + "";
@@ -1772,7 +1772,7 @@ function create_if_block_3$1(ctx) {
 	};
 }
 
-// (249:8) {#if model.html}
+// (250:8) {#if model.html}
 function create_if_block_2$1(ctx) {
 	let html_tag;
 	let raw_value = /*model*/ ctx[0].html + "";
@@ -1800,7 +1800,7 @@ function create_if_block_2$1(ctx) {
 	};
 }
 
-// (257:8) {#if model.showButton}
+// (258:8) {#if model.showButton}
 function create_if_block_1$2(ctx) {
 	let span;
 	let raw_value = /*model*/ ctx[0].buttonHtml + "";
@@ -1841,7 +1841,7 @@ function create_if_block_1$2(ctx) {
 	};
 }
 
-// (270:4) {#if model.labelBottom}
+// (271:4) {#if model.labelBottom}
 function create_if_block$6(ctx) {
 	let label;
 	let t_value = /*model*/ ctx[0].labelBottom + "";
@@ -2270,6 +2270,7 @@ function instance$d($$self, $$props, $$invalidate) {
 					$$invalidate(5, _position.y = event.y, _position);
 					$$invalidate(3, _dragging = true);
 					api.tasks.raise.move(model);
+					api.tasks.raise.drag({ x: event.x, y: event.y, model });
 					scrollIfOutOfBounds(event.event);
 				},
 				dragAllowed: () => {
@@ -3339,13 +3340,13 @@ function get_each_context$6(ctx, list, i) {
 	return child_ctx;
 }
 
-// (32:4) {#each header.columns as _header}
+// (34:4) {#each header.columns as _header}
 function create_each_block$6(ctx) {
 	let div1;
 	let div0;
-	let t0_value = (/*_header*/ ctx[13].label || 'N/A') + "";
-	let t0;
-	let t1;
+	let raw_value = (/*_header*/ ctx[13].label || 'N/A') + "";
+	let div0_class_value;
+	let t;
 	let mounted;
 	let dispose;
 
@@ -3357,9 +3358,8 @@ function create_each_block$6(ctx) {
 		c() {
 			div1 = element("div");
 			div0 = element("div");
-			t0 = text(t0_value);
-			t1 = space();
-			attr(div0, "class", "column-header-cell-label svelte-vfarxf");
+			t = space();
+			attr(div0, "class", div0_class_value = "column-header-cell-label " + (/*header*/ ctx[0].labelClasses || '') + " svelte-vfarxf");
 			attr(div1, "class", "column-header-cell svelte-vfarxf");
 			attr(div1, "role", "button");
 			attr(div1, "tabindex", "0");
@@ -3370,8 +3370,8 @@ function create_each_block$6(ctx) {
 		m(target, anchor) {
 			insert(target, div1, anchor);
 			append(div1, div0);
-			append(div0, t0);
-			append(div1, t1);
+			div0.innerHTML = raw_value;
+			append(div1, t);
 
 			if (!mounted) {
 				dispose = listen(div1, "click", click_handler);
@@ -3380,7 +3380,10 @@ function create_each_block$6(ctx) {
 		},
 		p(new_ctx, dirty) {
 			ctx = new_ctx;
-			if (dirty & /*header*/ 1 && t0_value !== (t0_value = (/*_header*/ ctx[13].label || 'N/A') + "")) set_data(t0, t0_value);
+			if (dirty & /*header*/ 1 && raw_value !== (raw_value = (/*_header*/ ctx[13].label || 'N/A') + "")) div0.innerHTML = raw_value;
+			if (dirty & /*header*/ 1 && div0_class_value !== (div0_class_value = "column-header-cell-label " + (/*header*/ ctx[0].labelClasses || '') + " svelte-vfarxf")) {
+				attr(div0, "class", div0_class_value);
+			}
 
 			if (dirty & /*header*/ 1) {
 				set_style(div1, "left", /*_header*/ ctx[13].left + "px");
@@ -3514,7 +3517,9 @@ function instance$9($$self, $$props, $$invalidate) {
 
 						return {
 							width: Math.min(distance_point - left, $width),
-							label: dateAdapter.format(period.from, header.format),
+							label: typeof header.format === 'function'
+							? header.format({ from: period.from, to: period.to })
+							: dateAdapter.format(period.from, header.format),
 							from: period.from,
 							to: period.to,
 							left
@@ -5963,6 +5968,7 @@ function instance$5($$self, $$props, $$invalidate) {
 		api.registerEvent('tasks', 'moveEnd');
 		api.registerEvent('tasks', 'change');
 		api.registerEvent('tasks', 'changed');
+		api.registerEvent('tasks', 'drag');
 		api.registerEvent('gantt', 'viewChanged');
 		api.registerEvent('gantt', 'dateSelected');
 		api.registerEvent('gantt', 'scroll');
@@ -6030,8 +6036,7 @@ function instance$5($$self, $$props, $$invalidate) {
 				scrollTop,
 				scrollLeft,
 				scrollWidth,
-				visibleWidth: $visibleWidth,
-				columns: getColumnsV2($_from, $_to, columnUnit, columnOffset)
+				visibleWidth: $visibleWidth
 			});
 
 			scrollables.forEach(scrollable => {
@@ -6105,7 +6110,12 @@ function instance$5($$self, $$props, $$invalidate) {
 	function onDateSelected(event) {
 		set_store_value(_from, $_from = event.detail.from, $_from);
 		set_store_value(_to, $_to = event.detail.to, $_to);
-		api['gantt'].raise.dateSelected({ from: $_from, to: $_to });
+
+		api['gantt'].raise.dateSelected({
+			from: $_from,
+			to: $_to,
+			unit: event.detail.unit
+		});
 	}
 
 	function initRows(rowsData) {

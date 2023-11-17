@@ -218,6 +218,7 @@
                     _position.y = event.y;
                     _dragging = true;
                     api.tasks.raise.move(model);
+                    api.tasks.raise.drag({ x: event.x, y: event.y, model });
                     scrollIfOutOfBounds(event.event);
                 },
                 dragAllowed: () => {

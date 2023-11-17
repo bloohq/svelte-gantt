@@ -14,9 +14,10 @@ import { SelectionManager } from './core/selectionManager';
 
 interface Header {
     unit: string;
-    format: string;
+    format: string | ((params: { from: number; to: number }) => string);
     offset?: number;
     sticky?: boolean;
+    labelClasses?: string;
 }
 
 export interface GanttContextDimensions {

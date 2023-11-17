@@ -25,7 +25,10 @@
             distance_point = getPositionByDate(period.to, $from.valueOf(), $to.valueOf(), $width);
             return {
                 width: Math.min(distance_point - left, $width),
-                label: dateAdapter.format(period.from, header.format),
+                label:
+                    typeof header.format === 'function'
+                        ? header.format({ from: period.from, to: period.to })
+                        : dateAdapter.format(period.from, header.format),
                 from: period.from,
                 to: period.to,
                 left: left
@@ -49,7 +52,9 @@
             style="left:{_header.left}px;width:{_header.width}px"
             on:click={() => onHeaderClick(_header)}
         >
-            <div class="column-header-cell-label">{_header.label || 'N/A'}</div>
+            <div class="column-header-cell-label {header.labelClasses || ''}">
+                {@html _header.label || 'N/A'}
+            </div>
         </div>
     {/each}
 </div>

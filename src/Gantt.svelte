@@ -310,6 +310,7 @@
         api.registerEvent('tasks', 'moveEnd');
         api.registerEvent('tasks', 'change');
         api.registerEvent('tasks', 'changed');
+        api.registerEvent('tasks', 'drag');
         api.registerEvent('gantt', 'viewChanged');
         api.registerEvent('gantt', 'dateSelected');
         api.registerEvent('gantt', 'scroll');
@@ -376,8 +377,7 @@
                 scrollTop,
                 scrollLeft,
                 scrollWidth,
-                visibleWidth: $visibleWidth,
-                columns: getColumnsV2($_from, $_to, columnUnit, columnOffset, $_width)
+                visibleWidth: $visibleWidth
             });
 
             scrollables.forEach(scrollable => {
@@ -456,7 +456,7 @@
     function onDateSelected(event) {
         $_from = event.detail.from;
         $_to = event.detail.to;
-        api['gantt'].raise.dateSelected({ from: $_from, to: $_to });
+        api['gantt'].raise.dateSelected({ from: $_from, to: $_to, unit: event.detail.unit });
     }
 
     function initRows(rowsData) {

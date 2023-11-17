@@ -75,6 +75,7 @@ type TaskContentTemplate = (task: TaskModel) => string;
 type TaskElementHook = (task: SvelteTask, element: HTMLElement) => void;
 
 export interface SvelteGanttOptions {
+    layout?: 'overlap' | 'pack' | 'push';
     /**
      * Rows to load in the gantt
      */
